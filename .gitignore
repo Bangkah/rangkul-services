@@ -8,4 +8,7 @@
 **/.packages/
 **/work/
 core-api/data/
+core-api/.coverage
+core-api/coverage.xml
+core-api/htmlcov/
 *.py[cod]

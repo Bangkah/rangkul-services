@@ -15,17 +15,56 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Pasang alat lint CI
-        run: pip install ruff==0.16.8
-      - name: Pasang dependensi API inti
-        run: pip install -r core-api/requirements.txt
-      - name: Periksa kualitas kode dan kompilasi API inti
+      - name: Pasang dependensi CI API inti
+        run: pip install -r core-api/requirements-ci.txt
+      - name: Periksa kualitas kode
         working-directory: core-api
         run: |
-          ruff check main.py
-          ruff format --check main.py
+          ruff check app tests main.py
+          ruff format --check app tests main.py
+          mypy app
+      - name: Unit dan integration test dengan gerbang coverage
+        working-directory: core-api
+        run: |
+          pytest --cov=app --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=85
+      - name: Kontrak OpenAPI dan kompilasi
+        working-directory: core-api
+        run: |
           python -m py_compile main.py
           python -m json.tool postman_collection.json > /dev/null
           python -c "import main; paths=set(main.app.openapi()['paths']); required={'/health','/v1/chat','/v1/hospitals/{hospital_id}','/v1/hospitals/{hospital_id}/floorplans','/v1/hospitals/{hospital_id}/route','/admin/hospitals/{hospital_id}/floorplans','/admin/wayfinding/{entry_id}/publish'}; assert required <= paths, (required - paths)"
+          python -c "from app.main import create_app; paths=set(create_app().openapi()['paths']); required={'/api/v1/health/live','/api/v1/health/ready','/api/v1/admin/me'}; assert required <= paths, (required - paths)"
+      - name: Simpan bukti coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-core-api
+          path: core-api/coverage.xml
+          if-no-files-found: error
       - name: Bangun image API inti
         run: docker build -t rangkul-core-api ./core-api
+
+  secret-scan:
+    name: Pemindaian secret
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Jalankan TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          extra_args: --only-verified
+
+  dependency-audit:
+    name: Audit dependensi
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Pasang pip-audit
+        run: pip install pip-audit
+      - name: Audit requirements API inti
+        run: pip-audit -r core-api/requirements.txt
