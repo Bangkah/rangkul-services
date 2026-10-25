@@ -1,4 +1,4 @@
-name: rangkul-services
+name: Pemeriksaan dan deployment RANGKUL
 
 on:
   pull_request:
@@ -8,26 +8,27 @@ on:
 
 jobs:
   verify:
+    name: Verifikasi kode dan image
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install model runtime CI dependencies
+      - name: Pasang dependensi CI runtime model
         run: pip install --require-hashes -r model-runtime/requirements-ci.lock
-      - name: Install Core API dependencies
+      - name: Pasang dependensi API inti
         run: pip install -r core-api/requirements.txt
-      - name: Lint model runtime
+      - name: Periksa kualitas kode runtime model
         working-directory: model-runtime
         run: ruff check app tests benchmarks scripts proxy.py
-      - name: Check model runtime formatting
+      - name: Periksa format runtime model
         working-directory: model-runtime
         run: ruff format --check app tests benchmarks scripts proxy.py
-      - name: Test model runtime
+      - name: Jalankan pengujian runtime model
         working-directory: model-runtime
         run: pytest -q
-      - name: Lint and compile Core API
+      - name: Periksa kualitas kode dan kompilasi API inti
         working-directory: core-api
         run: |
           ruff check main.py
@@ -35,12 +36,13 @@ jobs:
           python -m py_compile main.py
           python -m json.tool postman_collection.json > /dev/null
           python -c "import main; assert set(main.app.openapi()['paths']) == {'/healthz', '/api/chat', '/api/facilities', '/api/facility-documents', '/api/facility-documents/{document_id}', '/api/register-dummy', '/api/community-guide'}"
-      - name: Build model runtime image
+      - name: Bangun image runtime model
         run: docker build -t rangkul-model-runtime ./model-runtime
-      - name: Build Core API image
+      - name: Bangun image API inti
         run: docker build -t rangkul-core-api ./core-api
 
   deploy-model:
+    name: Deploy model ke Hugging Face Space privat
     needs: verify
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -50,14 +52,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install deployment dependencies
+      - name: Pasang dependensi deployment
         run: pip install --require-hashes -r model-runtime/requirements-deploy.lock
-      - name: Deploy the private model Space
+      - name: Unggah runtime ke Space model privat
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_SPACE_ID: ${{ secrets.HF_SPACE_ID }}
         run: python model-runtime/scripts/deploy_space.py
-      - name: Verify private Space and streaming chat
+      - name: Verifikasi Space privat dan chat streaming
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_SPACE_URL: ${{ secrets.HF_SPACE_URL }}

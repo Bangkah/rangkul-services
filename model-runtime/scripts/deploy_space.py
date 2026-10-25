@@ -1,4 +1,4 @@
-"""Upload the trusted main-branch source to an existing private Docker Space."""
+"""Unggah sumber dari cabang main yang tepercaya ke Docker Space privat."""
 
 import os
 from pathlib import Path
@@ -11,16 +11,16 @@ def main():
     repo_id = os.environ.get("HF_SPACE_ID")
     if not token or not repo_id:
         raise SystemExit(
-            "HF_TOKEN and HF_SPACE_ID must be configured as protected GitHub secrets."
+            "HF_TOKEN dan HF_SPACE_ID harus diatur sebagai secret GitHub terlindungi."
         )
 
     api = HfApi(token=token)
     info = api.repo_info(repo_id=repo_id, repo_type="space")
     if not info.private:
-        raise SystemExit("Refusing deployment: the target Space is not Private.")
+        raise SystemExit("Deployment dibatalkan: Space tujuan bukan privat.")
     if info.sdk != "docker":
         raise SystemExit(
-            "Refusing deployment: the target Space does not use Docker SDK."
+            "Deployment dibatalkan: Space tujuan tidak memakai SDK Docker."
         )
 
     commit = api.upload_folder(
@@ -43,7 +43,7 @@ def main():
             "benchmarks/**",
         ],
     )
-    print(f"Uploaded Space revision {commit.oid}")
+    print(f"Revisi Space berhasil diunggah: {commit.oid}")
 
 
 if __name__ == "__main__":

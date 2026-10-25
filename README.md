@@ -1,25 +1,27 @@
 # RANGKUL Services
 
-Repository for RANGKUL's private model runtime and backend API.
+Repositori untuk runtime model privat dan API backend RANGKUL.
 
-## Components
+## Komponen
 
-- [`model-runtime/`](model-runtime/README.md): Ollama + Qwen 2.5 runtime for a **Private Docker Hugging Face Space**. Only `POST /api/chat` is exposed under `/api`; the anti-diagnosis prompt is static in its Modelfile.
-- [`core-api/`](core-api/README.md): FastAPI service for chat forwarding, searchable partner documents, facilities, demo registration, and pending community directions. Its hosting target is separate from Hugging Face.
-- [`core-api/TEAM_HANDOFF.md`](core-api/TEAM_HANDOFF.md): integration notes for product manager Nazril, UI/UX Nasya, and frontend Jelita.
+- [`model-runtime/`](model-runtime/README.md): runtime Ollama + Qwen 2.5 untuk Hugging Face Space Docker privat. Hanya `POST /api/chat` yang dibuka di bawah `/api`; prompt anti-diagnosis tersimpan statis di `Modelfile`.
+- [`core-api/`](core-api/README.md): layanan FastAPI untuk meneruskan percakapan, mencari isi dokumen mitra, menampilkan fasilitas demo, membuat kode antrean simulasi, dan menyimpan panduan komunitas berstatus `pending`. Target hosting layanan ini terpisah dari Hugging Face.
+- [`core-api/TEAM_HANDOFF.md`](core-api/TEAM_HANDOFF.md): panduan integrasi untuk Product Manager Nazril, UI/UX Nasya, dan Frontend Jelita.
 
-## Hugging Face deployment
+## Deploy ke Hugging Face
 
-GitHub Actions checks the model runtime, runs its tests, and builds both Docker images on pull requests and pushes to `main`. A maintainer can manually dispatch the workflow on `main` to upload only `model-runtime/` to the Private Docker Space and run a streaming smoke check.
+GitHub Actions menjalankan pemeriksaan kode, pengujian runtime, dan build kedua image Docker saat pull request dan push ke `main`. Pemilik repositori dapat menjalankan workflow secara manual pada `main` untuk mengunggah hanya `model-runtime/` ke Space Docker privat dan menjalankan smoke test streaming.
 
-Configure the protected GitHub `production` environment with:
+Atur environment GitHub `production` sebagai environment terlindungi dan tambahkan rahasia berikut:
 
-- `HF_TOKEN`: a token with write access to the Space. Store it as a secret; never commit it into source. Rotate any token shared in chat after deployment verification.
-- `HF_SPACE_ID`: `owner/space-name`.
-- `HF_SPACE_URL`: the Space app origin, for example `https://owner-space.hf.space`.
+- `HF_TOKEN`: token dengan izin tulis ke Space. Simpan sebagai secret dan jangan pernah masukkan ke kode. Ganti token yang pernah dibagikan melalui chat setelah deployment berhasil diverifikasi.
+- `HF_SPACE_ID`: ID Space dengan format `pemilik/nama-space`.
+- `HF_SPACE_URL`: alamat aplikasi Space, misalnya `https://pemilik-nama-space.hf.space`.
 
-The Core API also needs `HF_SPACE_URL` and a read token in its host's secret manager so it can call the private Space. The same Hugging Face token may be used if its scope permits; it stays server-side.
+**Prasyarat akun:** pembuatan Hugging Face Docker Space privat pada perangkat keras CPU Basic memerlukan langganan PRO untuk akun personal. Akun RANGKUL saat ini belum memiliki Space; upaya membuat `Bangkah/rangkul-ai-runtime` ditolak Hugging Face dengan HTTP 402 karena langganan tersebut belum aktif. Tidak ada perangkat keras berbayar yang dipilih. Lihat [ketentuan dan harga Spaces](https://huggingface.co/docs/hub/spaces-overview#hardware-resources).
 
-## Core API staging
+Core API juga memerlukan `HF_SPACE_URL` dan token baca di pengelola secret layanan hostingnya untuk memanggil Space privat. Token Hugging Face hanya boleh digunakan di sisi server.
 
-The Core API image listens on port 8000 and stores SQLite at `/data/rangkul/community_guides.sqlite3` plus original partner documents at `/data/rangkul/facility-documents`; attach durable storage at `/data`. Set `HF_SPACE_URL`, `HF_TOKEN`, `FACILITY_ADMIN_TOKEN`, and the exact `CORS_ORIGINS` in the hosting platform. Once a staging host is selected, share its URL and Swagger endpoint (`/docs`) with the UI/UX and frontend roles. Facility pins remain clearly marked demo data until the product manager confirms partner details.
+## Staging Core API
+
+Image Core API menerima koneksi pada port 8000 dan menyimpan basis data SQLite di `/data/rangkul/community_guides.sqlite3` serta dokumen mitra di `/data/rangkul/facility-documents`; pasang penyimpanan persisten pada `/data`. Atur `HF_SPACE_URL`, `HF_TOKEN`, `FACILITY_ADMIN_TOKEN`, dan daftar `CORS_ORIGINS` yang tepat di platform hosting. Setelah target staging dipilih, bagikan URL layanan dan Swagger (`/docs`) kepada UI/UX dan Frontend. Data fasilitas saat ini masih contoh sampai Product Manager mengonfirmasi data mitra.

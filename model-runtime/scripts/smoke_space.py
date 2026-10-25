@@ -1,4 +1,4 @@
-"""Wait for the deployed Space and verify liveness, readiness, and streaming."""
+"""Tunggu Space hasil deployment, lalu periksa hidup, kesiapan, dan streaming."""
 
 import json
 import os
@@ -20,7 +20,7 @@ def main():
                 ready = client.get(f"{base_url}/readyz", headers=headers)
                 if live.status_code in (401, 403) or ready.status_code in (401, 403):
                     raise SystemExit(
-                        "Space access was denied; check Private Space membership and HF_TOKEN scope."
+                        "Akses ke Space ditolak; periksa keanggotaan Space privat dan cakupan HF_TOKEN."
                     )
                 if live.status_code == 200 and ready.status_code == 200:
                     break
@@ -28,7 +28,7 @@ def main():
                 pass
             time.sleep(15)
         else:
-            raise SystemExit("Space did not become ready within 10 minutes.")
+            raise SystemExit("Space belum siap setelah 10 menit.")
 
         with client.stream(
             "POST",
@@ -49,11 +49,11 @@ def main():
                 got_chunk = True
                 chunk = json.loads(line)
                 if chunk.get("error"):
-                    raise SystemExit("/api/chat stream returned an error.")
+                    raise SystemExit("Streaming /api/chat mengembalikan error.")
                 got_done = got_done or chunk.get("done") is True
         if not got_chunk or not got_done:
-            raise SystemExit("/api/chat was not a complete Ollama NDJSON stream.")
-        print("Space liveness, readiness, and streaming inference checks passed.")
+            raise SystemExit("Streaming NDJSON /api/chat dari Ollama belum lengkap.")
+        print("Pemeriksaan hidup, kesiapan, dan inferensi streaming Space berhasil.")
 
 
 if __name__ == "__main__":

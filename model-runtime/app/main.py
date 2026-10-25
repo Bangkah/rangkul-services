@@ -44,15 +44,15 @@ class ChatRequest(BaseModel):
     @classmethod
     def validate_options(cls, value):
         if set(value) - {"stop"}:
-            raise ValueError("Only the stop option is accepted")
+            raise ValueError("Hanya opsi stop yang diizinkan")
         return value
 
     @model_validator(mode="after")
     def validate_request(self):
         if self.model != MODEL_NAME:
-            raise ValueError("Unknown model")
+            raise ValueError("Model tidak dikenal")
         if sum(len(m.content) for m in self.messages) > MAX_INPUT_CHARS:
-            raise ValueError("Combined message content exceeds 12000 characters")
+            raise ValueError("Total isi pesan melebihi 12.000 karakter")
         return self
 
 
@@ -65,7 +65,7 @@ class AdmissionGate:
     async def slot(self):
         async with self.condition:
             if self.active and self.waiting >= 4:
-                raise HTTPException(503, "Inference queue is full")
+                raise HTTPException(503, "Antrean inferensi penuh")
             queued = self.active
             if queued:
                 self.waiting += 1
@@ -74,7 +74,7 @@ class AdmissionGate:
                     self.condition.wait_for(lambda: not self.active), self.queue_timeout
                 )
             except asyncio.TimeoutError:
-                raise HTTPException(503, "Inference queue wait timed out")
+                raise HTTPException(503, "Waktu tunggu di antrean inferensi habis")
             finally:
                 if queued:
                     self.waiting -= 1
@@ -97,22 +97,22 @@ class RequestLimitsMiddleware:
         path = scope.get("path", "")
         if path in ADMIN_PATHS:
             return await JSONResponse(
-                {"detail": "Ollama administration endpoints are disabled"},
+                {"detail": "Rute administrasi Ollama dinonaktifkan"},
                 status_code=403,
             )(scope, receive, send)
         if path.startswith("/api/") and path != "/api/chat":
-            return await JSONResponse({"detail": "Not Found"}, status_code=404)(
-                scope, receive, send
-            )
+            return await JSONResponse(
+                {"detail": "Rute tidak ditemukan"}, status_code=404
+            )(scope, receive, send)
         headers = dict(scope.get("headers", []))
         try:
             if int(headers.get(b"content-length", b"0")) > MAX_BODY_BYTES:
                 return await JSONResponse(
-                    {"detail": "Request body exceeds 128 KiB"}, status_code=413
+                    {"detail": "Isi request melebihi 128 KiB"}, status_code=413
                 )(scope, receive, send)
         except ValueError:
             return await JSONResponse(
-                {"detail": "Invalid Content-Length"}, status_code=400
+                {"detail": "Header Content-Length tidak valid"}, status_code=400
             )(scope, receive, send)
         body, more = bytearray(), True
         while more:
@@ -122,7 +122,7 @@ class RequestLimitsMiddleware:
             body.extend(message.get("body", b""))
             if len(body) > MAX_BODY_BYTES:
                 return await JSONResponse(
-                    {"detail": "Request body exceeds 128 KiB"}, status_code=413
+                    {"detail": "Isi request melebihi 128 KiB"}, status_code=413
                 )(scope, receive, send)
             more = message.get("more_body", False)
         sent = False
@@ -167,7 +167,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="RANGKUL AI Private Runtime",
+    title="Runtime Privat RANGKUL AI",
     lifespan=lifespan,
     docs_url=None,
     redoc_url=None,
@@ -243,13 +243,13 @@ async def healthz():
 @app.get("/readyz")
 async def readyz(request: Request):
     if not getattr(request.app.state, "ready", False):
-        raise HTTPException(503, "Runtime is not ready")
+        raise HTTPException(503, "Runtime belum siap")
     return {"status": "ready"}
 
 
 async def proxy_stream(request: Request, payload: dict[str, Any]):
     if not getattr(request.app.state, "ready", False):
-        raise HTTPException(503, "Runtime is not ready")
+        raise HTTPException(503, "Runtime belum siap")
     payload["stream"], payload["model"] = True, MODEL_NAME
     stop = payload.get("options", {}).get("stop")
     payload["options"] = {
@@ -269,13 +269,13 @@ async def proxy_stream(request: Request, payload: dict[str, Any]):
         upstream = await request.app.state.client.send(upstream_request, stream=True)
         if upstream.status_code >= 400:
             await upstream.aclose()
-            raise HTTPException(502, "Inference engine returned an error")
+            raise HTTPException(502, "Mesin inferensi mengembalikan error")
     except httpx.TimeoutException as exc:
         await gate_slot.__aexit__(type(exc), exc, exc.__traceback__)
-        raise HTTPException(504, "Inference engine timed out") from None
+        raise HTTPException(504, "Waktu tunggu mesin inferensi habis") from None
     except httpx.HTTPError as exc:
         await gate_slot.__aexit__(type(exc), exc, exc.__traceback__)
-        raise HTTPException(502, "Inference engine unavailable") from None
+        raise HTTPException(502, "Mesin inferensi tidak tersedia") from None
     except Exception:
         await gate_slot.__aexit__(None, None, None)
         raise
@@ -290,12 +290,12 @@ async def proxy_stream(request: Request, payload: dict[str, Any]):
             logger.warning(
                 json.dumps({"event": "upstream_timeout", "endpoint": "/api/chat"})
             )
-            yield b'{"error":"Upstream timeout","done":true}\n'
+            yield b'{"error":"Waktu tunggu layanan model habis","done":true}\n'
         except httpx.HTTPError as exc:
             logger.error(
                 json.dumps({"event": "upstream_error", "category": type(exc).__name__})
             )
-            yield b'{"error":"Inference engine unavailable","done":true}\n'
+            yield b'{"error":"Mesin inferensi tidak tersedia","done":true}\n'
         finally:
             await upstream.aclose()
             await gate_slot.__aexit__(None, None, None)
