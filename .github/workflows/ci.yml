@@ -1,0 +1,64 @@
+name: rangkul-services
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install model runtime CI dependencies
+        run: pip install --require-hashes -r model-runtime/requirements-ci.lock
+      - name: Install Core API dependencies
+        run: pip install -r core-api/requirements.txt
+      - name: Lint model runtime
+        working-directory: model-runtime
+        run: ruff check app tests benchmarks scripts proxy.py
+      - name: Check model runtime formatting
+        working-directory: model-runtime
+        run: ruff format --check app tests benchmarks scripts proxy.py
+      - name: Test model runtime
+        working-directory: model-runtime
+        run: pytest -q
+      - name: Lint and compile Core API
+        working-directory: core-api
+        run: |
+          ruff check main.py
+          ruff format --check main.py
+          python -m py_compile main.py
+          python -m json.tool postman_collection.json > /dev/null
+          python -c "import main; assert set(main.app.openapi()['paths']) == {'/healthz', '/api/chat', '/api/facilities', '/api/register-dummy', '/api/community-guide'}"
+      - name: Build model runtime image
+        run: docker build -t rangkul-model-runtime ./model-runtime
+      - name: Build Core API image
+        run: docker build -t rangkul-core-api ./core-api
+
+  deploy-model:
+    needs: verify
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deployment dependencies
+        run: pip install --require-hashes -r model-runtime/requirements-deploy.lock
+      - name: Deploy the private model Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE_ID: ${{ secrets.HF_SPACE_ID }}
+        run: python model-runtime/scripts/deploy_space.py
+      - name: Verify private Space and streaming chat
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE_URL: ${{ secrets.HF_SPACE_URL }}
+        run: python model-runtime/scripts/smoke_space.py

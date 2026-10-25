@@ -1,0 +1,43 @@
+{
+  "info": {
+    "name": "RANGKUL Core API",
+    "description": "RANGKUL frontend staging contract. Replace {{baseUrl}} after deployment.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {"key": "baseUrl", "value": "{{STAGING_URL}}"}
+  ],
+  "item": [
+    {
+      "name": "Chat (streaming NDJSON)",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\n  \"messages\": [{\"role\": \"user\", \"content\": \"Bagaimana mencari fasilitas kesehatan?\"}]\n}", "options": {"raw": {"language": "json"}}},
+        "url": {"raw": "{{baseUrl}}/api/chat", "host": ["{{baseUrl}}"], "path": ["api", "chat"]}
+      }
+    },
+    {
+      "name": "List demo facilities",
+      "request": {"method": "GET", "url": {"raw": "{{baseUrl}}/api/facilities", "host": ["{{baseUrl}}"], "path": ["api", "facilities"]}}
+    },
+    {
+      "name": "Dummy registration",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\n  \"text\": \"Simulasi pendaftaran untuk demo UI\"\n}", "options": {"raw": {"language": "json"}}},
+        "url": {"raw": "{{baseUrl}}/api/register-dummy", "host": ["{{baseUrl}}"], "path": ["api", "register-dummy"]}
+      }
+    },
+    {
+      "name": "Submit community direction (pending)",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {"mode": "raw", "raw": "{\n  \"text\": \"Dari halte, jalan ke arah gerbang utama.\"\n}", "options": {"raw": {"language": "json"}}},
+        "url": {"raw": "{{baseUrl}}/api/community-guide", "host": ["{{baseUrl}}"], "path": ["api", "community-guide"]}
+      }
+    }
+  ]
+}
