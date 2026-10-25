@@ -1,21 +1,21 @@
-# RANGKUL Core API (staging starter)
+# RANGKUL Core API (staging)
 
-FastAPI service for the RANGKUL team. It forwards chat to the private Hugging Face Space, serves demo facility pins, returns a static demo queue code, stores community directions with `pending` status, and indexes partner facility documents for chat references. See `TEAM_HANDOFF.md` for integration responsibilities by role.
+Layanan FastAPI untuk tim RANGKUL. API meneruskan percakapan ke Hugging Face Space privat, menyediakan titik fasilitas demo, membuat kode antrean simulasi, menyimpan panduan komunitas dengan status `pending`, dan mengindeks dokumen fasilitas mitra sebagai referensi percakapan. Lihat [`TEAM_HANDOFF.md`](TEAM_HANDOFF.md) untuk pembagian integrasi berdasarkan peran.
 
-## Run
+## Menjalankan secara lokal
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 Copy-Item .env.example .env
-# Set HF_SPACE_URL, HF_TOKEN, and FACILITY_ADMIN_TOKEN in the local environment/secret manager.
+# Isi HF_SPACE_URL, HF_TOKEN, dan FACILITY_ADMIN_TOKEN di .env atau pengelola rahasia.
 uvicorn main:app --reload --env-file .env
 ```
 
-Open `/docs` for generated Swagger/OpenAPI documentation. Configure `HF_SPACE_URL` as the HTTPS `*.hf.space` hostname and keep `HF_TOKEN` in the backend's secret manager. Never send the Hugging Face token to the browser.
+Buka `/docs` untuk dokumentasi Swagger/OpenAPI. Isi `HF_SPACE_URL` dengan alamat HTTPS `*.hf.space`; simpan `HF_TOKEN` di pengelola rahasia backend. Jangan pernah kirim token Hugging Face ke browser.
 
-Set `CORS_ORIGINS` to the exact frontend origins before staging; the default only allows local development origins. A Docker image is provided; mount a durable volume at `/data` to retain submitted community guides between restarts.
+Atur `CORS_ORIGINS` sesuai alamat frontend yang benar sebelum staging; nilai awal hanya mengizinkan alamat pengembangan lokal. Image Docker tersedia; pasang volume persisten pada `/data` agar panduan komunitas tetap tersimpan setelah container dimulai ulang.
 
 ```powershell
 docker build -t rangkul-core-api .
@@ -23,17 +23,12 @@ docker volume create rangkul-core-data
 docker run --rm -p 8000:8000 --env-file .env --mount source=rangkul-core-data,target=/data rangkul-core-api
 ```
 
-`GET /api/facilities` currently returns **synthetic demo locations**, not confirmed partner providers. Replace these fixtures with verified partner details before release. SQLite stores community guide submissions and a full-text document index. Uploaded originals are stored under `FACILITY_DOCS_DIR`; mount a durable volume and set `COMMUNITY_DB_PATH` and `FACILITY_DOCS_DIR` for staging.
+`GET /api/facilities` saat ini mengembalikan **lokasi demo buatan**, bukan mitra terkonfirmasi. Ganti data ini dengan informasi mitra yang sudah diverifikasi sebelum rilis. SQLite menyimpan panduan komunitas dan indeks dokumen teks lengkap. Berkas asli disimpan di `FACILITY_DOCS_DIR`; pasang volume persisten dan atur `COMMUNITY_DB_PATH` serta `FACILITY_DOCS_DIR` untuk staging.
 
-## Partner facility documents (RAG)
+## Dokumen fasilitas mitra (RAG)
 
-Authorized staff can upload PDF, DOCX, TXT, or Markdown files. The API extracts text, splits it into overlapping chunks, indexes the chunks with SQLite FTS5, and selects relevant passages for each `/api/chat` request. It keeps each original file so the team can manage the source documents. `FACILITY_ADMIN_TOKEN` is required in the `X-Facility-Admin-Token` header for listing, uploading, or deleting documents; keep this secret on the backend and never put it in the frontend. Swagger at `/docs` includes the upload form.
+Petugas yang berwenang dapat mengunggah berkas PDF, DOCX, TXT, atau Markdown. API mengekstrak teks, membaginya menjadi beberapa bagian yang saling tumpang tindih, menyimpan indeks SQLite FTS5, lalu memilih kutipan yang relevan untuk setiap permintaan `/api/chat`. Berkas asli juga disimpan agar tim dapat mengelola sumbernya. Rute daftar, unggah, dan hapus dokumen memerlukan `FACILITY_ADMIN_TOKEN` pada header `X-Facility-Admin-Token`; simpan token ini di backend dan jangan masukkan ke frontend. Form unggah tersedia di Swagger `/docs`.
 
-```powershell
-curl.exe -H "X-Facility-Admin-Token: $env:FACILITY_ADMIN_TOKEN" -F "file=@C:\path\to\partner-hours.pdf" http://localhost:8000/api/facility-documents
-curl.exe -H "X-Facility-Admin-Token: $env:FACILITY_ADMIN_TOKEN" http://localhost:8000/api/facility-documents
-```
+Versi pencarian pertama memakai pencarian teks penuh berbasis kata kunci, belum memakai embedding atau kemiripan vektor. PDF hasil pindai yang tidak memiliki teks terpilih akan ditolak dengan petunjuk OCR; ubah menjadi PDF yang teksnya dapat dicari sebelum diunggah. Dokumen yang diunggah diperlakukan sebagai data referensi yang tidak tepercaya di prompt percakapan. Indeks hanya boleh berisi dokumen fasilitas terkini yang sudah diperiksa dan disetujui petugas.
 
-This first retrieval version uses keyword full-text search, without embedding/vector similarity. Scanned PDFs with no selectable text are rejected with an OCR hint; convert them to searchable PDFs before upload. Uploaded material is treated as untrusted reference data in the chat prompt. Only staff-provided, current and verified facility documents should be indexed.
-
-No staging URL is claimed yet: a hosting target and Hugging Face Space credentials are still needed.
+URL staging belum tersedia karena target hosting dan kredensial Hugging Face Space belum dikonfigurasi.

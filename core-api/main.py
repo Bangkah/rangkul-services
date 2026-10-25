@@ -42,9 +42,9 @@ class ChatInput(BaseModel):
     @model_validator(mode="after")
     def validate_total_chars(self):
         if sum(len(message.content) for message in self.messages) > MAX_REQUEST_CHARS:
-            raise ValueError("Combined message content exceeds 12000 characters")
+            raise ValueError("Total isi pesan melebihi 12.000 karakter")
         if self.messages[-1].role != "user":
-            raise ValueError("The last chat message must come from the user")
+            raise ValueError("Pesan chat terakhir harus berasal dari pengguna")
         return self
 
 
@@ -159,9 +159,9 @@ def initialize_database() -> None:
 
 def check_facility_admin_token(token: str | None) -> None:
     if not FACILITY_ADMIN_TOKEN:
-        raise HTTPException(503, "Facility document administration is not configured")
+        raise HTTPException(503, "Administrasi dokumen fasilitas belum dikonfigurasi")
     if not token or not secrets.compare_digest(token, FACILITY_ADMIN_TOKEN):
-        raise HTTPException(401, "Invalid facility administration token")
+        raise HTTPException(401, "Token administrasi fasilitas tidak valid")
 
 
 def extract_document_text(filename: str, content: bytes) -> str:
@@ -172,7 +172,7 @@ def extract_document_text(filename: str, content: bytes) -> str:
 
             document = PdfReader(BytesIO(content), strict=False)
             if len(document.pages) > 250:
-                raise HTTPException(413, "PDF may contain at most 250 pages")
+                raise HTTPException(413, "PDF maksimal berisi 250 halaman")
             text = "\n".join(
                 page.extract_text(extraction_mode="layout") or ""
                 for page in document.pages
@@ -182,14 +182,16 @@ def extract_document_text(filename: str, content: bytes) -> str:
 
             document_stream = BytesIO(content)
             if not zipfile.is_zipfile(document_stream):
-                raise HTTPException(400, "Invalid DOCX file")
+                raise HTTPException(400, "Berkas DOCX tidak valid")
             with zipfile.ZipFile(document_stream) as archive:
                 entries = archive.infolist()
                 if (
                     len(entries) > 2_000
                     or sum(item.file_size for item in entries) > 100_000_000
                 ):
-                    raise HTTPException(413, "DOCX expands beyond the allowed size")
+                    raise HTTPException(
+                        413, "Ukuran DOCX setelah diekstrak melebihi batas"
+                    )
             document = Document(BytesIO(content))
             parts = [paragraph.text for paragraph in document.paragraphs]
             for table in document.tables:
@@ -202,12 +204,12 @@ def extract_document_text(filename: str, content: bytes) -> str:
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(400, "Document could not be read") from exc
+        raise HTTPException(400, "Dokumen tidak dapat dibaca") from exc
     text = re.sub(r"\s+", " ", text).strip()
     if not text:
         raise HTTPException(
             422,
-            "No selectable text found; scanned PDFs need OCR before they can be used",
+            "Teks yang dapat dipilih tidak ditemukan; PDF hasil pindai perlu OCR sebelum digunakan",
         )
     return text
 
@@ -259,10 +261,10 @@ def checked_space_url() -> str:
         or parsed.fragment
     ):
         raise HTTPException(
-            503, "HF_SPACE_URL must point to an HTTPS Hugging Face Space"
+            503, "HF_SPACE_URL harus mengarah ke alamat HTTPS Hugging Face Space"
         )
     if not HF_TOKEN:
-        raise HTTPException(503, "Hugging Face backend credentials are not configured")
+        raise HTTPException(503, "Kredensial Hugging Face backend belum dikonfigurasi")
     return HF_SPACE_URL
 
 
@@ -279,7 +281,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="RANGKUL Core API",
+    title="API Inti RANGKUL",
     description=(
         "API staging untuk chat RANGKUL, direktori fasilitas demo, simulasi antrean, "
         "dan pengajuan panduan komunitas. Fasilitas saat ini adalah data contoh."
@@ -303,23 +305,23 @@ app.add_middleware(
 )
 
 
-@app.get("/healthz", tags=["Operations"])
+@app.get("/healthz", tags=["Operasional"])
 def healthz():
     return {"status": "alive"}
 
 
 @app.post(
     "/api/chat",
-    tags=["Chat"],
+    tags=["Percakapan"],
     response_class=StreamingResponse,
     responses={
         200: {
-            "description": "Streaming newline-delimited JSON from the private model",
+            "description": "Streaming JSON per baris dari model privat",
             "content": {"application/x-ndjson": {"schema": {"type": "string"}}},
         },
-        502: {"description": "Hugging Face inference failed"},
-        503: {"description": "Hugging Face backend configuration is missing"},
-        504: {"description": "Hugging Face inference timed out"},
+        502: {"description": "Inferensi Hugging Face gagal"},
+        503: {"description": "Konfigurasi Hugging Face backend belum tersedia"},
+        504: {"description": "Waktu tunggu inferensi Hugging Face habis"},
     },
 )
 async def chat(body: ChatInput, request: Request):
@@ -366,13 +368,15 @@ async def chat(body: ChatInput, request: Request):
     try:
         upstream = await request.app.state.http.send(upstream_request, stream=True)
     except httpx.TimeoutException:
-        raise HTTPException(504, "Hugging Face inference timed out") from None
+        raise HTTPException(504, "Waktu tunggu inferensi Hugging Face habis") from None
     except httpx.HTTPError:
-        raise HTTPException(502, "Hugging Face inference is unavailable") from None
+        raise HTTPException(
+            502, "Layanan inferensi Hugging Face tidak tersedia"
+        ) from None
 
     if upstream.status_code >= 400:
         await upstream.aclose()
-        raise HTTPException(502, "Hugging Face inference returned an error")
+        raise HTTPException(502, "Layanan inferensi Hugging Face mengembalikan error")
 
     async def chunks():
         try:
@@ -381,7 +385,7 @@ async def chat(body: ChatInput, request: Request):
                     break
                 yield chunk
         except httpx.HTTPError:
-            yield b'{"error":"Upstream stream interrupted","done":true}\n'
+            yield b'{"error":"Aliran respons terputus","done":true}\n'
         finally:
             await upstream.aclose()
 
@@ -392,14 +396,14 @@ async def chat(body: ChatInput, request: Request):
     )
 
 
-@app.get("/api/facilities", tags=["Facilities"], response_model=FacilitiesResponse)
+@app.get("/api/facilities", tags=["Fasilitas"], response_model=FacilitiesResponse)
 def facilities():
     return {"facilities": FACILITIES, "data_status": "demo"}
 
 
 @app.get(
     "/api/facility-documents",
-    tags=["Facilities"],
+    tags=["Fasilitas"],
     response_model=list[FacilityDocumentInfo],
 )
 def list_facility_documents(x_facility_admin_token: str | None = Header(default=None)):
@@ -423,7 +427,7 @@ def list_facility_documents(x_facility_admin_token: str | None = Header(default=
 
 @app.post(
     "/api/facility-documents",
-    tags=["Facilities"],
+    tags=["Fasilitas"],
     response_model=FacilityDocumentInfo,
     status_code=201,
 )
@@ -436,14 +440,14 @@ async def upload_facility_document(
         (file.filename or "uploaded-document").replace("\\", "/").rsplit("/", 1)[-1]
     )
     if len(filename) > 255:
-        raise HTTPException(400, "Filename must be at most 255 characters")
+        raise HTTPException(400, "Nama berkas maksimal 255 karakter")
     suffix = Path(filename).suffix.lower()
     if suffix not in ALLOWED_DOCUMENT_SUFFIXES:
-        raise HTTPException(415, "Supported formats: PDF, DOCX, TXT, and MD")
+        raise HTTPException(415, "Format yang didukung: PDF, DOCX, TXT, dan MD")
     content = await file.read(MAX_FACILITY_DOCUMENT_BYTES + 1)
     await file.close()
     if len(content) > MAX_FACILITY_DOCUMENT_BYTES:
-        raise HTTPException(413, "Document must be at most 15 MiB")
+        raise HTTPException(413, "Ukuran dokumen maksimal 15 MiB")
     text = extract_document_text(filename, content)
     chunks = split_into_chunks(text)
     document_id = str(uuid.uuid4())
@@ -476,7 +480,7 @@ async def upload_facility_document(
     }
 
 
-@app.delete("/api/facility-documents/{document_id}", tags=["Facilities"])
+@app.delete("/api/facility-documents/{document_id}", tags=["Fasilitas"])
 def delete_facility_document(
     document_id: str, x_facility_admin_token: str | None = Header(default=None)
 ):
@@ -486,7 +490,7 @@ def delete_facility_document(
             "SELECT stored_path FROM facility_documents WHERE id=?", (document_id,)
         ).fetchone()
         if row is None:
-            raise HTTPException(404, "Facility document not found")
+            raise HTTPException(404, "Dokumen fasilitas tidak ditemukan")
         chunk_ids = connection.execute(
             "SELECT id FROM facility_chunks WHERE document_id=?", (document_id,)
         ).fetchall()
@@ -503,7 +507,7 @@ def delete_facility_document(
 
 @app.post(
     "/api/register-dummy",
-    tags=["Registration"],
+    tags=["Pendaftaran"],
     response_model=RegistrationResponse,
 )
 def register_dummy(body: PlainTextInput):
@@ -516,7 +520,7 @@ def register_dummy(body: PlainTextInput):
 
 @app.post(
     "/api/community-guide",
-    tags=["Community"],
+    tags=["Komunitas"],
     response_model=CommunityGuideResponse,
 )
 def community_guide(body: PlainTextInput):

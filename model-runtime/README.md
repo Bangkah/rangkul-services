@@ -1,5 +1,5 @@
 ---
-title: Rangkul AI Backend
+title: Runtime Privat RANGKUL AI
 emoji: 🏥
 colorFrom: blue
 colorTo: green
@@ -7,41 +7,43 @@ sdk: docker
 app_port: 7860
 ---
 
-# RANGKUL AI Private LLM Runtime
+# Runtime LLM Privat RANGKUL AI
 
-Private Hugging Face Docker Space with Ollama and a FastAPI proxy using `qwen2.5:1.5b`. Only `POST /api/chat` is exposed under `/api`; the operational health routes `/healthz` and `/readyz` are also available. Ollama binds to loopback.
+Hugging Face Space Docker privat yang menjalankan Ollama dan FastAPI proxy untuk `qwen2.5:1.5b`. Hanya `POST /api/chat` yang dibuka di bawah `/api`; rute operasional `/healthz` dan `/readyz` juga tersedia. Ollama hanya menerima koneksi dari loopback.
 
-## Run locally
+## Menjalankan secara lokal
 
 ```sh
 docker build -t rangkul-ai-runtime .
 docker run --rm -p 7860:7860 rangkul-ai-runtime
 ```
 
-Set Space visibility to **Private**. The backend caller keeps its Hugging Face read token in its own secret manager and sends it as `Authorization: Bearer ...`; never place it in this image or browser client.
+Atur visibilitas Space menjadi **Private**. Backend menyimpan token baca Hugging Face di pengelola rahasianya sendiri dan mengirimkannya melalui `Authorization: Bearer ...`; jangan pernah memasukkan token ke image ini atau ke kode browser.
 
-Inference responses always stream Ollama newline-delimited JSON (`application/x-ndjson`), ending with `done: true`. Errors detected before streaming map to HTTP 502/504; errors after stream headers are sent appear as an NDJSON error chunk. `options` accepts only `stop`; the server fixes model, context, temperature, seed, and output limit. Body is limited to 128 KiB, aggregate input to 12,000 characters, chat to 32 messages, output to 512 tokens, one active inference and four waiters with a 30-second queue limit.
+Respons inferensi selalu berupa streaming NDJSON dari Ollama (`application/x-ndjson`) dan diakhiri `done: true`. Error yang diketahui sebelum streaming dimulai menghasilkan HTTP 502/504; error setelah header streaming terkirim muncul sebagai satu bagian error NDJSON. `options` hanya menerima `stop`; model, konteks, temperatur, seed, dan batas keluaran ditetapkan server. Ukuran request maksimal 128 KiB, seluruh masukan maksimal 12.000 karakter, maksimal 32 pesan dan 512 token keluaran, satu inferensi aktif serta empat antrean dengan batas tunggu 30 detik.
 
-| Endpoint | Method | Purpose |
+| Rute | Metode | Kegunaan |
 |---|---|---|
-| `/healthz` | GET | Liveness |
-| `/readyz` | GET | Ollama/model readiness |
-| `/api/chat` | POST | Streaming chat |
+| `/healthz` | GET | Pemeriksaan hidup layanan |
+| `/readyz` | GET | Kesiapan Ollama dan model |
+| `/api/chat` | POST | Chat streaming |
 
-Admin Ollama endpoints return 403; all other API paths except `/api/chat` return 404. Client `system` messages and extra request fields are rejected; the anti-diagnosis system prompt lives only in the built model's Modelfile.
+Rute administratif Ollama mengembalikan 403; semua rute API lain selain `/api/chat` mengembalikan 404. Pesan `system` dari klien dan kolom request tambahan ditolak; prompt sistem untuk mencegah diagnosis medis hanya berada di `Modelfile` yang sudah dibangun ke dalam model.
 
-## Release identity
+## Identitas build
 
-- Model source tag: `qwen2.5:1.5b-instruct-q4_K_M` (Ollama ID `65ec06548149`; build fails if this ID changes)
-- Ollama build image: `ollama/ollama:0.40.11-rocm` (official CPU runtime retained; ROCm libraries removed from the final image)
-- Python base: `3.12.8-slim-bookworm`; hash-checked transitive pins in `requirements.lock`
-- Build-generated source and custom model IDs: `/app/model-identity.json`; public `/api/tags` exposes the custom model's current digest
-- Space port: `7860`; Ollama: `127.0.0.1:11434`
+- Tag model sumber: `qwen2.5:1.5b-instruct-q4_K_M` (ID Ollama `65ec06548149`; build gagal jika ID ini berubah).
+- Image build Ollama: `ollama/ollama:0.40.11-rocm` (runtime CPU resmi tetap digunakan; pustaka ROCm dihapus dari image akhir).
+- Image dasar Python: `3.12.8-slim-bookworm`; dependensi transitif di `requirements.lock` diverifikasi menggunakan hash.
+- ID model sumber dan model kustom hasil build: `/app/model-identity.json`; `/api/tags` menampilkan digest kustom terkini.
+- Port Space: `7860`; Ollama: `127.0.0.1:11434`.
 
-The source model is pulled at image build and its published model ID is checked against the expected value. The build writes both source and custom model IDs to `/app/model-identity.json`; the actual custom digest is also exposed by `/api/tags`. CPU performance, hardware allocation, and deployed Private Space access must be verified on the target Space.
+Model sumber diunduh saat build dan ID modelnya dibandingkan dengan nilai yang diharapkan. Build mencatat ID model sumber dan kustom ke `/app/model-identity.json`; digest kustom juga tersedia melalui `/api/tags`. Kinerja CPU, alokasi perangkat keras, dan akses ke Space privat tetap perlu diverifikasi setelah deploy.
 
-## Trusted deployment
+## Deployment tepercaya
 
-The GitHub Actions deploy job runs only after checks pass and a maintainer manually dispatches the workflow on `main`. Create a Hugging Face Space first, set it to **Private** and Docker SDK, then add protected GitHub environment secrets `HF_TOKEN` (write access to that Space), `HF_SPACE_ID` (`owner/space-name`), and `HF_SPACE_URL` (the Space app URL). The deploy script refuses a public or non-Docker Space; the smoke test waits up to ten minutes for readiness and verifies chat streaming. Pull requests do not receive these secrets.
+Job deploy GitHub Actions hanya berjalan setelah pemeriksaan lulus dan maintainer menjalankannya secara manual pada `main`. Buat Hugging Face Space terlebih dahulu dengan visibilitas **Private** dan SDK Docker, lalu tambahkan secret environment GitHub terlindungi: `HF_TOKEN` (izin tulis ke Space), `HF_SPACE_ID` (`pemilik/nama-space`), dan `HF_SPACE_URL` (alamat aplikasi Space). Script deployment menolak Space publik atau yang tidak menggunakan SDK Docker. Smoke test menunggu kesiapan hingga 10 menit dan memeriksa streaming chat. Pull request tidak menerima secret deployment.
 
-See [ACCEPTANCE.md](ACCEPTANCE.md) for what has been checked locally and what still requires a Space deployment.
+Akun Hugging Face yang digunakan belum memiliki Space RANGKUL. Pembuatan Docker Space privat pada CPU Basic ditolak dengan HTTP 402 karena akun personal memerlukan langganan PRO untuk menjalankan Space komputasi. Deployment dapat dilanjutkan setelah prasyarat akun dipenuhi; dokumentasi biaya dan perangkat keras tersedia di [Spaces Overview](https://huggingface.co/docs/hub/spaces-overview#hardware-resources).
+
+Lihat [`ACCEPTANCE.md`](ACCEPTANCE.md) untuk status pemeriksaan lokal dan hal-hal yang baru dapat diverifikasi setelah Space di-deploy.
