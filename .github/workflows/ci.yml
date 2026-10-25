@@ -33,7 +33,7 @@ jobs:
           python -m py_compile main.py
           python -m json.tool postman_collection.json > /dev/null
           python -c "import main; paths=set(main.app.openapi()['paths']); required={'/health','/v1/chat','/v1/hospitals/{hospital_id}','/v1/hospitals/{hospital_id}/floorplans','/v1/hospitals/{hospital_id}/route','/admin/hospitals/{hospital_id}/floorplans','/admin/wayfinding/{entry_id}/publish'}; assert required <= paths, (required - paths)"
-          python -c "from app.main import create_app; paths=set(create_app().openapi()['paths']); required={'/api/v1/health/live','/api/v1/health/ready','/api/v1/admin/me'}; assert required <= paths, (required - paths)"
+          python -c "from app.main import create_app; paths=set(create_app().openapi()['paths']); required={'/api/v1/health/live','/api/v1/health/ready','/api/v1/admin/me','/api/v1/hospitals','/api/v1/hospitals/{hospital_id}','/api/v1/hospitals/{hospital_id}/services','/api/v1/hospitals/{hospital_id}/visit-requirements','/api/v1/articles','/api/v1/articles/{article_id}','/api/v1/admin/hospitals','/api/v1/admin/hospitals/{hospital_id}/publish','/api/v1/admin/hospitals/{hospital_id}/archive','/api/v1/admin/knowledge-documents','/api/v1/admin/knowledge-documents/{record_id}/review','/api/v1/admin/knowledge-documents/{record_id}/publish','/api/v1/admin/articles','/api/v1/admin/audit-events'}; assert required <= paths, (required - paths)"
       - name: Simpan bukti coverage
         uses: actions/upload-artifact@v4
         with:

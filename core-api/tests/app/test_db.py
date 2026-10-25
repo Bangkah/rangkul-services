@@ -11,7 +11,7 @@ from app.db import Database, MigrationError
 def test_migrate_is_idempotent(tmp_path: Path):
     database = Database(tmp_path / "rangkul.sqlite3")
 
-    assert database.migrate() == 1
+    assert database.migrate() == 2
     assert database.migrate() == 0
     assert database.pending_versions() == []
 
@@ -25,13 +25,16 @@ def test_migrate_is_idempotent(tmp_path: Path):
         ]
 
     assert {"id", "occurred_at", "actor", "actor_role", "action", "outcome"} <= columns
-    assert versions == ["0001_audit_events"]
+    assert versions == ["0001_audit_events", "0002_catalog_and_content"]
 
 
 def test_pending_and_readiness_before_migration(tmp_path: Path):
     database = Database(tmp_path / "kosong.sqlite3")
 
-    assert database.pending_versions() == ["0001_audit_events"]
+    assert database.pending_versions() == [
+        "0001_audit_events",
+        "0002_catalog_and_content",
+    ]
     with pytest.raises(MigrationError):
         database.check_ready()
 

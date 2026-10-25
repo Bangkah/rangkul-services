@@ -41,9 +41,9 @@ def test_startup_applies_migrations(settings):
             for row in connection.execute("SELECT version FROM schema_migrations")
         ]
 
-    assert "audit_events" in tables
+    assert {"audit_events", "hospitals", "articles"} <= tables
     assert "schema_migrations" in tables
-    assert applied == ["0001_audit_events"]
+    assert applied == ["0001_audit_events", "0002_catalog_and_content"]
 
 
 def test_ready_fails_softly_on_unmigrated_database(client, tmp_path: Path):

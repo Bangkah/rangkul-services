@@ -37,9 +37,28 @@ def build_settings(tmp_path: Path, app_env: str = "test") -> Settings:
     )
 
 
+def auth_header(token: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {token}"}
+
+
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
     return build_settings(tmp_path)
+
+
+@pytest.fixture
+def system_auth() -> dict[str, str]:
+    return auth_header(SYSTEM_TOKEN)
+
+
+@pytest.fixture
+def reviewer_auth() -> dict[str, str]:
+    return auth_header(REVIEWER_TOKEN)
+
+
+@pytest.fixture
+def hospital_auth() -> dict[str, str]:
+    return auth_header(HOSPITAL_TOKEN)
 
 
 @pytest.fixture

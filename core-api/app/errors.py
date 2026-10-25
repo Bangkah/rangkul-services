@@ -21,6 +21,7 @@ class ErrorCode(str, Enum):
     UNAUTHORIZED = "UNAUTHORIZED"
     FORBIDDEN = "FORBIDDEN"
     NOT_FOUND = "NOT_FOUND"
+    CONFLICT = "CONFLICT"
     METHOD_NOT_ALLOWED = "METHOD_NOT_ALLOWED"
     RATE_LIMITED = "RATE_LIMITED"
     CONSENT_REQUIRED = "CONSENT_REQUIRED"
@@ -47,6 +48,7 @@ _STATUS_CODES: Mapping[int, tuple[ErrorCode, str]] = {
     403: (ErrorCode.FORBIDDEN, "Akses ditolak."),
     404: (ErrorCode.NOT_FOUND, "Sumber daya tidak ditemukan."),
     405: (ErrorCode.METHOD_NOT_ALLOWED, "Metode tidak diizinkan."),
+    409: (ErrorCode.CONFLICT, "Konflik dengan status data saat ini."),
     429: (ErrorCode.RATE_LIMITED, "Terlalu banyak permintaan."),
     503: (ErrorCode.SERVICE_UNAVAILABLE, "Layanan belum siap."),
 }
