@@ -1,14 +1,42 @@
 # RANGKUL Services
 
-Backend inti proyek RANGKUL AI sesuai SRS v2: integrasi Groq dari server, chat SSE dengan guardrail, direktori RS, ingest dokumen draf, dan route service wayfinding. Runtime Ollama/Hugging Face v1 disimpan di `model-runtime/` sebagai referensi deprecated; tidak dipakai Compose atau deployment aktif.
+Backend RANGKUL AI. Implementasi mengikuti SRS secara bertahap (waterfall); status saat ini **Fase 0 — Fondasi Backend dan CI/CD**.
+
+## Struktur
+
+- `core-api/app/` — API aktif sesuai SRS. Entrypoint: `app.main:app`, base path `/api/v1`.
+- `core-api/main.py` — kode v2 lama yang **diparkir**. Tidak dihapus dan tidak dijadikan entrypoint; fiturnya dibangun ulang saat fasenya tiba.
+- `model-runtime/` — runtime v1 deprecated, disimpan sebagai referensi.
 
 ## Mulai
 
-1. Salin `core-api/.env.example` menjadi `core-api/.env` dan isi `GROQ_API_KEY` serta token admin acak.
-2. Jalankan `docker compose up --build core-api`.
-3. Buka `http://localhost:8000/docs` untuk kontrak OpenAPI dan `/health` untuk status.
+```powershell
+cd core-api
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+Copy-Item .env.example .env
+uvicorn app.main:app --reload --env-file .env
+```
 
-Jangan commit `.env`. Baca [`core-api/README.md`](core-api/README.md) untuk kontrak v2, tahapan publikasi dokumen, dan batasan saat ini.
+- Swagger: `http://localhost:8000/docs`
+- Liveness: `GET /api/v1/health/live`
+- Readiness: `GET /api/v1/health/ready`
+- Identitas admin: `GET /api/v1/admin/me` dengan header `Authorization: Bearer dev-system-admin-token` (token pengembangan dari `.env.example`; jangan dipakai di produksi).
+
+Docker: `docker compose up --build core-api`.
+
+## Pemeriksaan
+
+```powershell
+cd core-api
+ruff check app tests main.py
+ruff format --check app tests main.py
+mypy app
+pytest --cov=app --cov-fail-under=85
+```
+
+CI GitHub Actions menjalankan lint, format, type check, unit/integration test dengan gerbang coverage 85%, pemeriksaan kontrak OpenAPI, pemindaian secret, audit dependensi, dan build image.
 
 ## Integrasi tim
 
@@ -16,8 +44,4 @@ Jangan commit `.env`. Baca [`core-api/README.md`](core-api/README.md) untuk kont
 - UI/UX: Nasya
 - Frontend: Jelita
 
-Data RS Cut Meutia dan denah belum disediakan/terverifikasi; endpoint rumah sakit tetap kosong sampai Product Manager/admin RS memasukkan sumber resmi. Belum ada URL staging.
-
-## CI
-
-GitHub Actions memeriksa lint, format, kompilasi Python, kontrak OpenAPI wajib, dan membangun image Core API pada PR dan push ke `main`. Perubahan kerja dilakukan melalui branch dan pull request; jangan push langsung ke `main`.
+Data RS Cut Meutia, denah, reviewer medis, dan kontak krisis belum tersedia/terverifikasi. Jangan mengklaim kemitraan atau mempublikasikan data layanan sebelum dikonfirmasi pihak berwenang.

@@ -1,5 +1,16 @@
 .venv
 __pycache__
 .ruff_cache
+.pytest_cache
+.mypy_cache
 .env
 data
+work
+tests
+.coverage
+coverage.xml
+htmlcov
+main.py
+TEAM_HANDOFF.md
+README.md
+postman_collection.json

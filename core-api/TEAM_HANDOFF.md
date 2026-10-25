@@ -1,5 +1,7 @@
 # Serah terima integrasi RANGKUL AI v2
 
+> **Catatan status:** dokumen ini menjelaskan `main.py` v2 yang **diparkir**. Entrypoint aktif sekarang adalah `app.main:app` (Fase 0 SRS). Kontrak aktif ada di `README.md`; endpoint di bawah akan dibangun ulang saat fasenya tiba.
+
 ## Peran tim
 
 - **Product Manager — Nazril:** minta data resmi RS Cut Meutia (alamat, koordinat, jam, kontak, akses), denah aktual, admin pemilik data, reviewer medis, aturan nama netral, nomor darurat terkurasi, dan keputusan legal atas transfer data ke penyedia AI.
