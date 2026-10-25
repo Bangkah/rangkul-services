@@ -23,9 +23,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq").strip().lower()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
-LOCAL_MODEL_URL = os.getenv(
-    "LOCAL_MODEL_URL", "http://127.0.0.1:7860"
-).rstrip("/")
+LOCAL_MODEL_URL = os.getenv("LOCAL_MODEL_URL", "http://127.0.0.1:7860").rstrip("/")
 GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions"
 SYSTEM_PROMPT = """Anda adalah asisten RANGKUL AI. Jawab selalu dalam bahasa Indonesia yang jelas, alami, dan empatik.
 Jangan menyatakan atau mengklaim diagnosis medis, menggantikan tenaga profesional, atau memberi kepastian klinis.
@@ -424,9 +422,7 @@ async def chat(body: ChatInput, request: Request):
     except httpx.TimeoutException:
         raise HTTPException(504, "Waktu tunggu inferensi model habis") from None
     except httpx.HTTPError:
-        raise HTTPException(
-            502, "Layanan inferensi model tidak tersedia"
-        ) from None
+        raise HTTPException(502, "Layanan inferensi model tidak tersedia") from None
 
     if upstream.status_code >= 400:
         status_code = 429 if upstream.status_code == 429 else 502
