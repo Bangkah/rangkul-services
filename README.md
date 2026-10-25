@@ -4,24 +4,20 @@ Repositori untuk runtime model privat dan API backend RANGKUL.
 
 ## Komponen
 
-- [`model-runtime/`](model-runtime/README.md): runtime Ollama + Qwen 2.5 untuk Hugging Face Space Docker privat. Hanya `POST /api/chat` yang dibuka di bawah `/api`; prompt anti-diagnosis tersimpan statis di `Modelfile`.
-- [`core-api/`](core-api/README.md): layanan FastAPI untuk meneruskan percakapan, mencari isi dokumen mitra, menampilkan fasilitas demo, membuat kode antrean simulasi, dan menyimpan panduan komunitas berstatus `pending`. Target hosting layanan ini terpisah dari Hugging Face.
+- [`model-runtime/`](model-runtime/README.md): runtime Ollama + Qwen 2.5 untuk Docker lokal, menjadi opsi inferensi privat tanpa API eksternal.
+- [`core-api/`](core-api/README.md): layanan FastAPI yang dapat memakai Groq untuk demo cepat atau Ollama lokal untuk demonstrasi privasi, selain mencari isi dokumen mitra dan menyediakan API fasilitas/demo lainnya.
 - [`core-api/TEAM_HANDOFF.md`](core-api/TEAM_HANDOFF.md): panduan integrasi untuk Product Manager Nazril, UI/UX Nasya, dan Frontend Jelita.
 
-## Deploy ke Hugging Face
+## Menjalankan MVP
 
-GitHub Actions menjalankan pemeriksaan kode, pengujian runtime, dan build kedua image Docker saat pull request dan push ke `main`. Pemilik repositori dapat menjalankan workflow secara manual pada `main` untuk mengunggah hanya `model-runtime/` ke Space Docker privat dan menjalankan smoke test streaming.
+GitHub Actions menjalankan pemeriksaan kode, pengujian runtime, dan build kedua image Docker saat pull request dan push ke `main`. Untuk menjalankan demo cepat, atur `GROQ_API_KEY` di `core-api/.env` lalu jalankan `docker compose up --build core-api`.
 
-Atur environment GitHub `production` sebagai environment terlindungi dan tambahkan rahasia berikut:
+Untuk demonstrasi lokal privat, atur `LLM_PROVIDER=ollama` di `core-api/.env`, lalu jalankan `docker compose --profile ollama up --build`. Ollama mengunduh model ketika image runtime dibangun; sesudah itu inference dapat berjalan di Docker lokal tanpa kunci API eksternal.
 
-- `HF_TOKEN`: token dengan izin tulis ke Space. Simpan sebagai secret dan jangan pernah masukkan ke kode. Ganti token yang pernah dibagikan melalui chat setelah deployment berhasil diverifikasi.
-- `HF_SPACE_ID`: ID Space dengan format `pemilik/nama-space`.
-- `HF_SPACE_URL`: alamat aplikasi Space, misalnya `https://pemilik-nama-space.hf.space`.
+Groq memakai endpoint Chat Completions kompatibel OpenAI dan model awal `openai/gpt-oss-20b`. Kuota gratis mengikuti batas akun Groq dan dapat berubah; saat limit terlampaui, backend mengembalikan HTTP 429. Lihat [dokumentasi rate limit Groq](https://console.groq.com/docs/rate-limits).
 
-**Prasyarat akun:** pembuatan Hugging Face Docker Space privat pada perangkat keras CPU Basic memerlukan langganan PRO untuk akun personal. Akun RANGKUL saat ini belum memiliki Space; upaya membuat `Bangkah/rangkul-ai-runtime` ditolak Hugging Face dengan HTTP 402 karena langganan tersebut belum aktif. Tidak ada perangkat keras berbayar yang dipilih. Lihat [ketentuan dan harga Spaces](https://huggingface.co/docs/hub/spaces-overview#hardware-resources).
-
-Core API juga memerlukan `HF_SPACE_URL` dan token baca di pengelola secret layanan hostingnya untuk memanggil Space privat. Token Hugging Face hanya boleh digunakan di sisi server.
+Mode Groq mengirim prompt pengguna dan kutipan dokumen fasilitas ke Groq. Untuk bukti privasi, jalankan Ollama lokal dan gunakan prompt data demo; jangan masukkan data pasien ke layanan eksternal.
 
 ## Staging Core API
 
-Image Core API menerima koneksi pada port 8000 dan menyimpan basis data SQLite di `/data/rangkul/community_guides.sqlite3` serta dokumen mitra di `/data/rangkul/facility-documents`; pasang penyimpanan persisten pada `/data`. Atur `HF_SPACE_URL`, `HF_TOKEN`, `FACILITY_ADMIN_TOKEN`, dan daftar `CORS_ORIGINS` yang tepat di platform hosting. Setelah target staging dipilih, bagikan URL layanan dan Swagger (`/docs`) kepada UI/UX dan Frontend. Data fasilitas saat ini masih contoh sampai Product Manager mengonfirmasi data mitra.
+Image Core API menerima koneksi pada port 8000 dan menyimpan basis data SQLite di `/data/rangkul/community_guides.sqlite3` serta dokumen mitra di `/data/rangkul/facility-documents`; pasang penyimpanan persisten pada `/data`. Atur `LLM_PROVIDER`, kredensial provider, `FACILITY_ADMIN_TOKEN`, dan daftar `CORS_ORIGINS` yang tepat di platform hosting. Setelah target staging dipilih, bagikan URL layanan dan Swagger (`/docs`) kepada UI/UX dan Frontend. Data fasilitas saat ini masih contoh sampai Product Manager mengonfirmasi data mitra.

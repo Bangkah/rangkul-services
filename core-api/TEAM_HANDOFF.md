@@ -16,7 +16,7 @@
 ## Frontend — Jelita
 
 - Gunakan contoh request dan response di bawah. Chat mengirim NDJSON secara streaming dan dapat merujuk dokumen fasilitas mitra yang sudah diunggah.
-- Panggil hanya alamat backend yang telah dikonfigurasi. Jangan pernah menyimpan `HF_TOKEN` di kode browser.
+- Panggil hanya alamat backend yang telah dikonfigurasi. Jangan pernah menyimpan `GROQ_API_KEY` atau token provider lain di kode browser.
 - Sampaikan alamat frontend yang tepat kepada pemilik backend agar dapat ditambahkan ke `CORS_ORIGINS`.
 
 **URL dasar staging:** belum tersedia; gunakan `{{STAGING_URL}}` setelah hosting disiapkan.
@@ -37,7 +37,7 @@ Request JSON:
 }
 ```
 
-Response berupa streaming `application/x-ndjson` dari Hugging Face Space privat. Prompt sistem untuk mencegah diagnosis medis tersimpan statis; pesan `system` dari klien dan kolom tambahan akan ditolak. Chat mencari kutipan yang relevan di indeks dokumen mitra SQLite FTS5 dan menyisipkannya sebagai konteks yang tidak tepercaya. Pencarian ini berbasis kata kunci, bukan kemiripan vektor.
+Response berupa streaming `application/x-ndjson` dari provider yang dipilih di backend (`groq` atau `ollama`). Prompt sistem untuk mencegah diagnosis medis ditambahkan oleh server; pesan `system` dari klien dan kolom tambahan akan ditolak. Chat mencari kutipan yang relevan di indeks dokumen mitra SQLite FTS5 dan menyisipkannya sebagai konteks yang tidak tepercaya. Pencarian ini berbasis kata kunci, bukan kemiripan vektor. Mode Groq mengirim percakapan dan kutipan RAG ke layanan eksternal; gunakan data demo saja.
 
 ## `GET/POST /api/facility-documents` dan `DELETE /api/facility-documents/{id}`
 
@@ -69,4 +69,4 @@ Response JSON berisi `id` yang dibuat server, `text` yang dikirim, `status: "pen
 
 ## Error dan batasan saat ini
 
-Payload tidak valid mengembalikan error validasi FastAPI (422). Chat mengembalikan 503 jika kredensial Hugging Face belum diatur, 502 jika layanan model bermasalah, dan 504 jika waktu tunggu habis. Fasilitas masih data contoh dan URL staging belum tersedia. Gunakan penyimpanan persisten untuk `/data/rangkul`, baik untuk basis data/indeks maupun dokumen yang diunggah.
+Payload tidak valid mengembalikan error validasi FastAPI (422). Chat mengembalikan 503 jika provider belum dikonfigurasi, 502 jika layanan model bermasalah, 429 saat Groq melaporkan kuota habis, dan 504 jika waktu tunggu habis. Fasilitas masih data contoh dan URL staging belum tersedia. Gunakan penyimpanan persisten untuk `/data/rangkul`, baik untuk basis data/indeks maupun dokumen yang diunggah.
