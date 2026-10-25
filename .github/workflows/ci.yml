@@ -1,4 +1,4 @@
-name: Pemeriksaan dan deployment RANGKUL
+name: Pemeriksaan RANGKUL
 
 on:
   pull_request:
@@ -40,27 +40,3 @@ jobs:
         run: docker build -t rangkul-model-runtime ./model-runtime
       - name: Bangun image API inti
         run: docker build -t rangkul-core-api ./core-api
-
-  deploy-model:
-    name: Deploy model ke Hugging Face Space privat
-    needs: verify
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Pasang dependensi deployment
-        run: pip install --require-hashes -r model-runtime/requirements-deploy.lock
-      - name: Unggah runtime ke Space model privat
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_SPACE_ID: ${{ secrets.HF_SPACE_ID }}
-        run: python model-runtime/scripts/deploy_space.py
-      - name: Verifikasi Space privat dan chat streaming
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_SPACE_URL: ${{ secrets.HF_SPACE_URL }}
-        run: python model-runtime/scripts/smoke_space.py

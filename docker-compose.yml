@@ -1,0 +1,21 @@
+services:
+  core-api:
+    build: ./core-api
+    env_file:
+      - ./core-api/.env
+    environment:
+      LOCAL_MODEL_URL: http://model-runtime:7860
+    ports:
+      - "8000:8000"
+    volumes:
+      - rangkul-core-data:/data
+
+  model-runtime:
+    profiles: ["ollama"]
+    build: ./model-runtime
+    expose:
+      - "7860"
+    restart: unless-stopped
+
+volumes:
+  rangkul-core-data:

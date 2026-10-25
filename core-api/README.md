@@ -1,6 +1,6 @@
 # RANGKUL Core API (staging)
 
-Layanan FastAPI untuk tim RANGKUL. API meneruskan percakapan ke Hugging Face Space privat, menyediakan titik fasilitas demo, membuat kode antrean simulasi, menyimpan panduan komunitas dengan status `pending`, dan mengindeks dokumen fasilitas mitra sebagai referensi percakapan. Lihat [`TEAM_HANDOFF.md`](TEAM_HANDOFF.md) untuk pembagian integrasi berdasarkan peran.
+Layanan FastAPI untuk tim RANGKUL. API meneruskan percakapan ke Groq untuk demo MVP atau ke runtime Ollama lokal, menyediakan titik fasilitas demo, membuat kode antrean simulasi, menyimpan panduan komunitas dengan status `pending`, dan mengindeks dokumen fasilitas mitra sebagai referensi percakapan. Lihat [`TEAM_HANDOFF.md`](TEAM_HANDOFF.md) untuk pembagian integrasi berdasarkan peran.
 
 ## Menjalankan secara lokal
 
@@ -9,11 +9,30 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 Copy-Item .env.example .env
-# Isi HF_SPACE_URL, HF_TOKEN, dan FACILITY_ADMIN_TOKEN di .env atau pengelola rahasia.
+# Atur GROQ_API_KEY untuk demo Groq atau LLM_PROVIDER=ollama untuk runtime lokal.
 uvicorn main:app --reload --env-file .env
 ```
 
-Buka `/docs` untuk dokumentasi Swagger/OpenAPI. Isi `HF_SPACE_URL` dengan alamat HTTPS `*.hf.space`; simpan `HF_TOKEN` di pengelola rahasia backend. Jangan pernah kirim token Hugging Face ke browser.
+Buka `/docs` untuk dokumentasi Swagger/OpenAPI. Atur `LLM_PROVIDER=groq` dan `GROQ_API_KEY` untuk Groq, atau `LLM_PROVIDER=ollama` dan `LOCAL_MODEL_URL` untuk runtime Ollama. Kunci Groq tetap berada di backend dan tidak boleh dikirim ke browser.
+
+## Mode demo dengan Groq
+
+Salin `.env.example` menjadi `.env`, masukkan kunci API Groq pada `GROQ_API_KEY`, lalu jalankan API. Model awal `openai/gpt-oss-20b` memakai endpoint Chat Completions yang kompatibel dengan OpenAI. Batas model mengikuti kuota akun Groq; API meneruskan status 429 dan `Retry-After` bila kuota terlampaui. Isi percakapan dan kutipan dokumen RAG akan dikirim ke Groq. Gunakan hanya data demo dan jangan mengirim data pasien atau informasi kesehatan yang dapat mengidentifikasi seseorang.
+
+```powershell
+Copy-Item .env.example .env
+docker compose up --build core-api
+```
+
+## Mode lokal dengan Ollama
+
+Ubah `LLM_PROVIDER=ollama` di `.env`, lalu jalankan kedua container. Compose membangun model ke dalam image runtime sehingga setelah image siap, inferensi lokal tidak memerlukan kunci Groq atau koneksi ke API model eksternal.
+
+```powershell
+docker compose --profile ollama up --build
+```
+
+Mode lokal memakai port internal `model-runtime:7860`; hanya Core API yang dipublikasikan di port 8000. Tunggu sampai container `model-runtime` berstatus `healthy` sebelum mencoba chat pertama kali.
 
 Atur `CORS_ORIGINS` sesuai alamat frontend yang benar sebelum staging; nilai awal hanya mengizinkan alamat pengembangan lokal. Image Docker tersedia; pasang volume persisten pada `/data` agar panduan komunitas tetap tersimpan setelah container dimulai ulang.
 
@@ -31,4 +50,4 @@ Petugas yang berwenang dapat mengunggah berkas PDF, DOCX, TXT, atau Markdown. AP
 
 Versi pencarian pertama memakai pencarian teks penuh berbasis kata kunci, belum memakai embedding atau kemiripan vektor. PDF hasil pindai yang tidak memiliki teks terpilih akan ditolak dengan petunjuk OCR; ubah menjadi PDF yang teksnya dapat dicari sebelum diunggah. Dokumen yang diunggah diperlakukan sebagai data referensi yang tidak tepercaya di prompt percakapan. Indeks hanya boleh berisi dokumen fasilitas terkini yang sudah diperiksa dan disetujui petugas.
 
-URL staging belum tersedia karena target hosting dan kredensial Hugging Face Space belum dikonfigurasi.
+URL staging belum tersedia karena target hosting Core API belum dikonfigurasi. Space Docker privat Hugging Face tidak digunakan pada MVP gratis; detail runtime lokal ada di [`../model-runtime/README.md`](../model-runtime/README.md).
