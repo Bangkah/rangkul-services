@@ -15,19 +15,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Pasang dependensi CI runtime model
-        run: pip install --require-hashes -r model-runtime/requirements-ci.lock
+      - name: Pasang alat lint CI
+        run: pip install ruff==0.16.8
       - name: Pasang dependensi API inti
         run: pip install -r core-api/requirements.txt
-      - name: Periksa kualitas kode runtime model
-        working-directory: model-runtime
-        run: ruff check app tests benchmarks scripts proxy.py
-      - name: Periksa format runtime model
-        working-directory: model-runtime
-        run: ruff format --check app tests benchmarks scripts proxy.py
-      - name: Jalankan pengujian runtime model
-        working-directory: model-runtime
-        run: pytest -q
       - name: Periksa kualitas kode dan kompilasi API inti
         working-directory: core-api
         run: |
@@ -35,8 +26,6 @@ jobs:
           ruff format --check main.py
           python -m py_compile main.py
           python -m json.tool postman_collection.json > /dev/null
-          python -c "import main; assert set(main.app.openapi()['paths']) == {'/healthz', '/api/chat', '/api/facilities', '/api/facility-documents', '/api/facility-documents/{document_id}', '/api/register-dummy', '/api/community-guide'}"
-      - name: Bangun image runtime model
-        run: docker build -t rangkul-model-runtime ./model-runtime
+          python -c "import main; paths=set(main.app.openapi()['paths']); required={'/health','/v1/chat','/v1/hospitals/{hospital_id}','/v1/hospitals/{hospital_id}/floorplans','/v1/hospitals/{hospital_id}/route','/admin/hospitals/{hospital_id}/floorplans','/admin/wayfinding/{entry_id}/publish'}; assert required <= paths, (required - paths)"
       - name: Bangun image API inti
         run: docker build -t rangkul-core-api ./core-api

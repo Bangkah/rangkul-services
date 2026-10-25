@@ -1,72 +1,42 @@
-# Panduan integrasi API RANGKUL berdasarkan peran
+# Serah terima integrasi RANGKUL AI v2
 
-## Product Manager — Nazril
+## Peran tim
 
-- Sediakan dokumen fasilitas mitra terkini (PDF, DOCX, TXT, atau Markdown), lalu pastikan isi dan faktanya sudah diperiksa.
-- Konfirmasi nama fasilitas mitra, alamat, koordinat, dan jadwal operasional sebelum mengganti titik demo.
-- Pilih layanan staging backend dan tetapkan kebijakan penyimpanan serta peninjauan panduan komunitas.
-- Bagikan URL staging final kepada UI/UX dan Frontend setelah deployment siap.
+- **Product Manager — Nazril:** minta data resmi RS Cut Meutia (alamat, koordinat, jam, kontak, akses), denah aktual, admin pemilik data, reviewer medis, aturan nama netral, nomor darurat terkurasi, dan keputusan legal atas transfer data ke penyedia AI.
+- **UI/UX — Nasya:** rancang layar persetujuan pihak ketiga sebelum chat, peringatan agar tidak memasukkan identitas/hasil tes, disclaimer, state “informasi belum tersedia”, viewer denah dengan zoom/kontras/alt text, dan tombol eksplisit “Saya sudah sampai”.
+- **Frontend — Jelita:** konsumsi SSE `POST /v1/chat`; tampilkan citations/disclaimer; buat Google Maps direction link dari koordinat RS; jangan kirim koordinat pengguna ke backend/Groq. Indoor route menggunakan endpoint route deterministik.
 
-## UI/UX — Nasya
+## API penting
 
-- Gunakan `is_demo` dan `data_status` untuk menandai titik fasilitas contoh. Chat dapat merujuk dokumen mitra yang diunggah; peta tetap memerlukan koordinat terstruktur yang sudah diverifikasi.
-- Tampilkan jawaban pendaftaran simulasi sebagai kode antrean demo, bukan janji temu sungguhan.
-- Tampilkan panduan komunitas sebagai kiriman berstatus menunggu peninjauan sampai diperiksa.
+Swagger lokal: `http://localhost:8000/docs`; health: `GET /health`. URL staging belum disiapkan.
 
-## Frontend — Jelita
+### `POST /v1/chat`
 
-- Gunakan contoh request dan response di bawah. Chat mengirim NDJSON secara streaming dan dapat merujuk dokumen fasilitas mitra yang sudah diunggah.
-- Panggil hanya alamat backend yang telah dikonfigurasi. Jangan pernah menyimpan `GROQ_API_KEY` atau token provider lain di kode browser.
-- Sampaikan alamat frontend yang tepat kepada pemilik backend agar dapat ditambahkan ke `CORS_ORIGINS`.
-
-**URL dasar staging:** belum tersedia; gunakan `{{STAGING_URL}}` setelah hosting disiapkan.
-
-FastAPI membuat Swagger di `{{STAGING_URL}}/docs` setelah layanan berjalan.
-
-Rute pemeriksaan container adalah `GET /healthz` dan mengembalikan `{"status":"alive"}`.
-
-## `POST /api/chat`
-
-Request JSON:
+Header `Content-Type: application/json`; body:
 
 ```json
 {
-  "messages": [
-    {"role": "user", "content": "Bagaimana cara mencari layanan kesehatan?"}
-  ]
+  "consent": true,
+  "messages": [{"role":"user","content":"Apa yang perlu disiapkan sebelum tes?"}]
 }
 ```
 
-Response berupa streaming `application/x-ndjson` dari provider yang dipilih di backend (`groq` atau `ollama`). Prompt sistem untuk mencegah diagnosis medis ditambahkan oleh server; pesan `system` dari klien dan kolom tambahan akan ditolak. Chat mencari kutipan yang relevan di indeks dokumen mitra SQLite FTS5 dan menyisipkannya sebagai konteks yang tidak tepercaya. Pencarian ini berbasis kata kunci, bukan kemiripan vektor. Mode Groq mengirim percakapan dan kutipan RAG ke layanan eksternal; gunakan data demo saja.
+Response `text/event-stream`: event `delta` berisi `text`, kemudian event `done` berisi `citations` (`title`, `version`, `source`) dan `disclaimer`. Tanpa dokumen published yang cocok, backend mengembalikan respons aman “belum tersedia” dan tidak meminta jawaban bebas ke Groq. Konten dokumen tidak tepercaya. Pola NIK, email, telepon direduksi sebelum Groq. Riwayat dibatasi server. `system` dari klien tidak diterima.
 
-## `GET/POST /api/facility-documents` dan `DELETE /api/facility-documents/{id}`
+### RS dan rute
 
-Rute khusus petugas ini memakai `X-Facility-Admin-Token`. Unggah melalui kolom form multipart `file` dengan format PDF, DOCX, TXT, atau Markdown. API mengembalikan ID dokumen dan jumlah bagian yang diindeks. `GET` menampilkan daftar dokumen yang diindeks; `DELETE` menghapus berkas asli dan indeksnya. Simpan token admin di backend. Ekstraksi teks tidak menjalankan OCR pada PDF hasil pindai.
+- `GET /v1/hospitals/{id}` — alamat, koordinat, jam, telepon, akses; hanya RS yang ditandai terverifikasi.
+- `GET /v1/hospitals/{id}/floorplans` — daftar file published beserta versi/tanggal dan `viewer_url`.
+- `GET /v1/hospitals/{id}/route?to={room_id}&from={entry_id}` — langkah dari graf tersimpan, tidak dihasilkan LLM. Default titik awal `pintu-utama`.
 
-## `GET /api/facilities`
+Saat ini tidak ada data rumah sakit sebenarnya. Semua GET mengembalikan 404 sampai pihak berwenang memasukkan dan memverifikasi data.
 
-Contoh response JSON: `{ "facilities": [...], "data_status": "demo" }`. Setiap item memiliki `id`, `name`, `is_demo`, `address`, `schedule`, `timezone`, dan `coordinates` (`latitude`, `longitude`). Semua titik saat ini hanya data contoh; jangan tampilkan sebagai klinik mitra sungguhan.
+### Admin dokumen dan data
 
-## `POST /api/register-dummy`
+Semua rute admin sementara memerlukan header `X-Facility-Admin-Token`; jangan pernah masukkan token ini di browser. Upload dokumen edukasi lewat `POST /api/facility-documents` (multipart `file`, opsional `source`, `version`), lalu terbitkan setelah review menggunakan `POST /api/facility-documents/{id}/publish` dengan `{"reviewed_by":"...","version":"..."}`. Dokumen baru berstatus draf dan tidak bisa diretrieve sebelum dipublish.
 
-Request JSON (hanya teks biasa; tidak menerima unggahan foto KTP):
+Data RS dimasukkan lewat `POST /admin/hospitals/{id}`. Wayfinding: buat draf `POST /admin/hospitals/{id}/wayfinding`, kemudian `POST /admin/wayfinding/{entry_id}/publish`. Denah asli bisa diunggah ke `POST /admin/hospitals/{id}/floorplans`; tetap draft. Penerbitan file sengaja dinonaktifkan sampai malware scanner dan approval multi-peran dipasang.
 
-```json
-{"text": "Saya ingin simulasi pendaftaran."}
-```
+## Batasan dan keputusan sebelum rilis
 
-Contoh response JSON: `{"registration_code":"RGKL-DEMO-0001","status":"confirmed","message":"..."}`. Kode statis hanya untuk demo antarmuka dan tidak membuat antrean sungguhan.
-
-## `POST /api/community-guide`
-
-Request JSON:
-
-```json
-{"text": "Masuk dari gerbang utama, lalu belok kiri."}
-```
-
-Response JSON berisi `id` yang dibuat server, `text` yang dikirim, `status: "pending"`, dan `created_at` dalam UTC. Teks disimpan di SQLite.
-
-## Error dan batasan saat ini
-
-Payload tidak valid mengembalikan error validasi FastAPI (422). Chat mengembalikan 503 jika provider belum dikonfigurasi, 502 jika layanan model bermasalah, 429 saat Groq melaporkan kuota habis, dan 504 jika waktu tunggu habis. Fasilitas masih data contoh dan URL staging belum tersedia. Gunakan penyimpanan persisten untuk `/data/rangkul`, baik untuk basis data/indeks maupun dokumen yang diunggah.
+Index saat ini SQLite FTS5 keyword, bukan vector database. Belum ada OCR, scanner malware, RBAC multi-admin, expiry alert, scheduled model deprecation check, ZDR proof, metrik token/429, kontak krisis yang dikurasi, atau golden set medis 150 kasus. Semua itu butuh layanan, reviewer, atau data dari tim. Dokumen medis/denah tidak boleh dipublikasikan sebelum ditinjau manusia. Groq adalah pemrosesan pihak ketiga di luar negeri; persetujuan UI dan tinjauan legal UU PDP wajib sebelum penggunaan publik.
