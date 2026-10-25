@@ -80,8 +80,8 @@ def test_seed_is_idempotent_and_labelled(tmp_path):
         second = seed.seed(connection)
         connection.commit()
 
-        assert first == {"inserted": 9, "skipped": 0}
-        assert second == {"inserted": 0, "skipped": 9}
+        assert first == {"inserted": 10, "skipped": 0}
+        assert second == {"inserted": 0, "skipped": 10}
 
         for table in (
             "hospitals",
@@ -176,7 +176,7 @@ def test_seed_command_writes_development_database(monkeypatch, tmp_path, capsys)
 
     assert seed.main() == 0
     assert database_path.exists()
-    assert "9 dibuat" in capsys.readouterr().out
+    assert "10 dibuat" in capsys.readouterr().out
 
 
 def test_audit_detail_is_sanitised_and_truncated(tmp_path):

@@ -8,6 +8,7 @@ from fastapi import Depends, Request
 
 from app.config import Settings
 from app.db import Database
+from app.providers import LLMProvider
 
 
 def get_connection(request: Request) -> Iterator[sqlite3.Connection]:
@@ -27,5 +28,11 @@ def get_settings(request: Request) -> Settings:
     return settings
 
 
+def get_llm_provider(request: Request) -> LLMProvider:
+    provider: LLMProvider = request.app.state.llm
+    return provider
+
+
 DbConnection = Annotated[sqlite3.Connection, Depends(get_connection)]
 AppSettings = Annotated[Settings, Depends(get_settings)]
+LlmProvider = Annotated[LLMProvider, Depends(get_llm_provider)]

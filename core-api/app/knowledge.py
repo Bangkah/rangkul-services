@@ -36,6 +36,7 @@ def create_document(
     title: str,
     source: str,
     owner: str,
+    hospital_id: str | None,
     version: int,
     content: str,
     status: str,
@@ -49,16 +50,17 @@ def create_document(
     record_id = str(uuid.uuid4())
     connection.execute(
         """INSERT INTO knowledge_documents (
-            id, document_id, title, source, owner, version, status, content,
-            effective_from, review_due_at, previous_version_id, is_synthetic,
-            created_by, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            id, document_id, title, source, owner, hospital_id, version,
+            status, content, effective_from, review_due_at, previous_version_id,
+            is_synthetic, created_by, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             record_id,
             document_id,
             title,
             source,
             owner,
+            hospital_id,
             version,
             status,
             content,

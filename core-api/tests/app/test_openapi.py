@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 
-def test_openapi_contains_phase_one_contract(client):
+def test_openapi_contains_phase_contract(client):
     schema = client.get("/openapi.json").json()
 
     paths = schema["paths"]
@@ -15,6 +15,8 @@ def test_openapi_contains_phase_one_contract(client):
         "/api/v1/hospitals/{hospital_id}/visit-requirements",
         "/api/v1/articles",
         "/api/v1/articles/{article_id}",
+        "/api/v1/chat",
+        "/api/v1/chat/stream",
         "/api/v1/admin/hospitals",
         "/api/v1/admin/hospitals/{hospital_id}",
         "/api/v1/admin/hospitals/{hospital_id}/publish",
@@ -39,7 +41,7 @@ def test_openapi_contains_phase_one_contract(client):
         "/api/v1/admin/audit-events",
     }
     assert required <= set(paths)
-    assert schema["info"]["version"] == "0.2.0"
+    assert schema["info"]["version"] == "0.3.0"
     assert "ErrorResponse" in schema["components"]["schemas"]
 
 

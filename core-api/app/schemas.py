@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Generic, TypeVar
+from typing import Generic, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -198,6 +198,7 @@ class KnowledgeDocumentCreate(StrictModel):
     title: str = Field(min_length=1, max_length=200)
     source: str = Field(min_length=1, max_length=500)
     owner: str = Field(min_length=1, max_length=200)
+    hospital_id: str | None = Field(default=None, pattern=r"^[a-z0-9][a-z0-9-]{1,63}$")
     content: str = Field(min_length=1, max_length=100000)
     effective_from: datetime | None = None
     review_due_at: datetime | None = None
@@ -234,6 +235,7 @@ class KnowledgeDocumentAdmin(BaseModel):
     title: str
     source: str
     owner: str
+    hospital_id: str | None = None
     version: int
     status: KnowledgeStatus
     content: str
@@ -249,3 +251,49 @@ class KnowledgeDocumentAdmin(BaseModel):
     created_by: str
     created_at: datetime
     updated_at: datetime
+
+
+class ChatSafetyState(str, Enum):
+    GROUNDED = "grounded"
+    ABSTAINED = "abstained"
+    CRISIS = "crisis"
+    MEDICAL_GUARDRAIL = "medical_guardrail"
+    INJECTION_BLOCKED = "injection_blocked"
+    WAYFINDING_GUARDRAIL = "wayfinding_guardrail"
+    FALLBACK = "fallback"
+    PROVIDER_UNAVAILABLE = "provider_unavailable"
+
+
+class ChatHistoryMessage(StrictModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=4000)
+
+
+class ChatRequest(StrictModel):
+    session_id: str | None = Field(
+        default=None, pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]{2,63}$"
+    )
+    hospital_id: str | None = Field(default=None, pattern=r"^[a-z0-9][a-z0-9-]{1,63}$")
+    message: str = Field(min_length=1, max_length=4000)
+    consent_ai_processing: bool
+    consent_version: str = Field(min_length=1, max_length=100)
+    history: list[ChatHistoryMessage] = Field(default_factory=list, max_length=20)
+    stream: bool = False
+
+
+class ChatSource(BaseModel):
+    source_id: str
+    document_id: str
+    title: str
+    version: int
+    published_at: datetime | None
+    url: str | None = None
+
+
+class ChatResponse(BaseModel):
+    request_id: str
+    session_id: str
+    answer: str
+    safety_state: ChatSafetyState
+    sources: list[ChatSource]
+    disclaimer: str

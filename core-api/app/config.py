@@ -10,8 +10,12 @@ from typing import Any
 
 DEFAULT_DATABASE_PATH = Path("data/rangkul.sqlite3")
 DEFAULT_CORS_ORIGINS = ("http://localhost:3000", "http://127.0.0.1:3000")
+DEFAULT_GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
+DEFAULT_AI_CONSENT_VERSION = "privacy-notice-v1"
 ALLOWED_ENVIRONMENTS = {"development", "test", "staging", "production"}
 ALLOWED_LOG_LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+ALLOWED_LLM_PROVIDERS = {"fake", "groq"}
 PLACEHOLDER_TOKEN_PREFIXES = ("dev-", "ganti-", "changeme", "isi-", "example")
 PRODUCTION_MIN_TOKEN_LENGTH = 32
 
@@ -37,6 +41,27 @@ class Settings:
     log_level: str
     cors_origins: tuple[str, ...]
     admin_credentials: tuple[AdminCredential, ...]
+    llm_provider: str = "fake"
+    groq_api_key: str = field(default="", repr=False)
+    groq_base_url: str = DEFAULT_GROQ_BASE_URL
+    groq_model: str = DEFAULT_GROQ_MODEL
+    groq_fallback_model: str = ""
+    llm_timeout_seconds: float = 20.0
+    llm_max_retries: int = 1
+    llm_temperature: float = 0.1
+    llm_max_tokens: int = 600
+    chat_enabled: bool = True
+    chat_max_message_chars: int = 2000
+    chat_max_history_turns: int = 6
+    chat_top_k: int = 4
+    chat_similarity_threshold: float = 0.2
+    chat_max_context_chars: int = 6000
+    ai_consent_version: str = DEFAULT_AI_CONSENT_VERSION
+    crisis_contact: str = ""
+    rate_limit_public_per_minute: int = 120
+    rate_limit_admin_per_minute: int = 60
+    rate_limit_chat_per_minute: int = 10
+    rate_limit_window_seconds: int = 60
 
     @property
     def is_production(self) -> bool:
@@ -84,12 +109,59 @@ class Settings:
         if app_env == "production":
             _validate_production_credentials(credentials)
 
+        llm_provider = values.get("LLM_PROVIDER", "fake").strip().lower()
+        if llm_provider not in ALLOWED_LLM_PROVIDERS:
+            raise ValueError(
+                f"LLM_PROVIDER harus salah satu dari {sorted(ALLOWED_LLM_PROVIDERS)}"
+            )
+        groq_base_url = values.get("GROQ_BASE_URL", "").strip() or DEFAULT_GROQ_BASE_URL
+        ai_consent_version = (
+            values.get("AI_CONSENT_VERSION", "").strip() or DEFAULT_AI_CONSENT_VERSION
+        )
+
         return cls(
             app_env=app_env,
             database_path=database_path,
             log_level=log_level,
             cors_origins=cors_origins,
             admin_credentials=credentials,
+            llm_provider=llm_provider,
+            groq_api_key=values.get("GROQ_API_KEY", "").strip(),
+            groq_base_url=groq_base_url.rstrip("/"),
+            groq_model=(values.get("GROQ_MODEL", "").strip() or DEFAULT_GROQ_MODEL),
+            groq_fallback_model=values.get("GROQ_FALLBACK_MODEL", "").strip(),
+            llm_timeout_seconds=_read_float(
+                values, "LLM_TIMEOUT_SECONDS", 20.0, 1.0, 120.0
+            ),
+            llm_max_retries=_read_int(values, "LLM_MAX_RETRIES", 1, 0, 3),
+            llm_temperature=_read_float(values, "LLM_TEMPERATURE", 0.1, 0.0, 2.0),
+            llm_max_tokens=_read_int(values, "LLM_MAX_TOKENS", 600, 50, 4000),
+            chat_enabled=_read_bool(values, "CHAT_ENABLED", True),
+            chat_max_message_chars=_read_int(
+                values, "CHAT_MAX_MESSAGE_CHARS", 2000, 1, 4000
+            ),
+            chat_max_history_turns=_read_int(values, "CHAT_HISTORY_TURNS", 6, 0, 20),
+            chat_top_k=_read_int(values, "CHAT_TOP_K", 4, 1, 20),
+            chat_similarity_threshold=_read_float(
+                values, "CHAT_SIMILARITY_THRESHOLD", 0.2, 0.0, 1.0
+            ),
+            chat_max_context_chars=_read_int(
+                values, "CHAT_MAX_CONTEXT_CHARS", 6000, 500, 50000
+            ),
+            ai_consent_version=ai_consent_version,
+            crisis_contact=values.get("CRISIS_CONTACT", "").strip(),
+            rate_limit_public_per_minute=_read_int(
+                values, "RATE_LIMIT_PUBLIC_PER_MINUTE", 120, 1, 100000
+            ),
+            rate_limit_admin_per_minute=_read_int(
+                values, "RATE_LIMIT_ADMIN_PER_MINUTE", 60, 1, 100000
+            ),
+            rate_limit_chat_per_minute=_read_int(
+                values, "RATE_LIMIT_CHAT_PER_MINUTE", 10, 1, 100000
+            ),
+            rate_limit_window_seconds=_read_int(
+                values, "RATE_LIMIT_WINDOW_SECONDS", 60, 1, 3600
+            ),
         )
 
 
@@ -138,6 +210,51 @@ def _parse_admin_credentials(raw: str) -> tuple[AdminCredential, ...]:
             )
         )
     return tuple(credentials)
+
+
+def _read_bool(values: Mapping[str, str], name: str, default: bool) -> bool:
+    raw = values.get(name, "").strip().lower()
+    if not raw:
+        return default
+    if raw in {"1", "true", "yes", "ya", "on"}:
+        return True
+    if raw in {"0", "false", "no", "tidak", "off"}:
+        return False
+    raise ValueError(f"{name} harus berupa boolean")
+
+
+def _read_int(
+    values: Mapping[str, str], name: str, default: int, minimum: int, maximum: int
+) -> int:
+    raw = values.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        parsed = int(raw)
+    except ValueError as exc:
+        raise ValueError(f"{name} harus berupa bilangan bulat") from exc
+    if parsed < minimum or parsed > maximum:
+        raise ValueError(f"{name} harus antara {minimum} dan {maximum}")
+    return parsed
+
+
+def _read_float(
+    values: Mapping[str, str],
+    name: str,
+    default: float,
+    minimum: float,
+    maximum: float,
+) -> float:
+    raw = values.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        parsed = float(raw)
+    except ValueError as exc:
+        raise ValueError(f"{name} harus berupa angka") from exc
+    if parsed < minimum or parsed > maximum:
+        raise ValueError(f"{name} harus antara {minimum} dan {maximum}")
+    return parsed
 
 
 def _validate_production_credentials(

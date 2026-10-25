@@ -5,6 +5,7 @@ import sys
 from datetime import datetime, timezone
 from typing import Any
 
+from app import rag
 from app.config import Settings
 from app.db import Database
 
@@ -134,6 +135,33 @@ def _seed_statements(now: str) -> list[tuple[str, tuple[Any, ...]]]:
         (
             """INSERT INTO knowledge_documents (
                 id, document_id, title, source, owner, version, status, content,
+                review_due_at, reviewed_by, reviewed_at, review_reason,
+                published_at, is_synthetic, created_by, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, 1, 'published', ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+            ON CONFLICT DO NOTHING""",
+            (
+                "kdoc-demo-tes-hiv-v1",
+                "kdoc-demo-tes-hiv",
+                "Persiapan tes HIV (contoh)",
+                "Materi edukasi sintetis untuk pengembangan",
+                "Tim RANGKUL (contoh)",
+                "Yang perlu disiapkan sebelum tes HIV: konsultasi awal, "
+                "identitas diri, dan datang sesuai jam layanan. Tes HIV "
+                "bersifat sukarela dan rahasia. Data ini hanya contoh "
+                "pengembangan.",
+                "2027-10-01T00:00:00+00:00",
+                "Reviewer Medis (Simulasi)",
+                "2026-10-02T00:00:00+00:00",
+                "Disetujui untuk data uji.",
+                "2026-10-03T00:00:00+00:00",
+                "seed",
+                now,
+                now,
+            ),
+        ),
+        (
+            """INSERT INTO knowledge_documents (
+                id, document_id, title, source, owner, version, status, content,
                 is_synthetic, created_by, created_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, 1, 'pending_review', ?, 1, 'seed', ?, ?)
             ON CONFLICT DO NOTHING""",
@@ -196,6 +224,7 @@ def seed(connection: sqlite3.Connection, *, now: str | None = None) -> dict[str,
             inserted += 1
         else:
             skipped += 1
+    rag.ensure_published_indexed(connection, now=timestamp)
     return {"inserted": inserted, "skipped": skipped}
 
 

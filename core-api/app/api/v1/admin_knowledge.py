@@ -6,7 +6,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, status
 
-from app import audit, knowledge
+from app import audit, knowledge, rag
 from app.api.deps import AppSettings, DbConnection
 from app.config import Role
 from app.policy import (
@@ -99,6 +99,7 @@ def create_document(
             title=payload.title,
             source=payload.source,
             owner=payload.owner,
+            hospital_id=payload.hospital_id,
             version=version,
             content=payload.content,
             status=(
@@ -275,6 +276,7 @@ def publish_document(
     if updated is None:
         raise not_found("Dokumen pengetahuan tidak ditemukan.")
 
+    rag.index_document(connection, updated, now=now)
     superseded = knowledge.supersede_published(
         connection,
         document_id=row["document_id"],
