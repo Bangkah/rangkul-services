@@ -1,14 +1,45 @@
 from __future__ import annotations
 
 
-def test_openapi_contains_phase_zero_contract(client):
+def test_openapi_contains_phase_one_contract(client):
     schema = client.get("/openapi.json").json()
 
     paths = schema["paths"]
-    assert "/api/v1/health/live" in paths
-    assert "/api/v1/health/ready" in paths
-    assert "/api/v1/admin/me" in paths
-    assert schema["info"]["version"] == "0.1.0"
+    required = {
+        "/api/v1/health/live",
+        "/api/v1/health/ready",
+        "/api/v1/admin/me",
+        "/api/v1/hospitals",
+        "/api/v1/hospitals/{hospital_id}",
+        "/api/v1/hospitals/{hospital_id}/services",
+        "/api/v1/hospitals/{hospital_id}/visit-requirements",
+        "/api/v1/articles",
+        "/api/v1/articles/{article_id}",
+        "/api/v1/admin/hospitals",
+        "/api/v1/admin/hospitals/{hospital_id}",
+        "/api/v1/admin/hospitals/{hospital_id}/publish",
+        "/api/v1/admin/hospitals/{hospital_id}/archive",
+        "/api/v1/admin/services/{service_id}",
+        "/api/v1/admin/services/{service_id}/publish",
+        "/api/v1/admin/services/{service_id}/archive",
+        "/api/v1/admin/visit-requirements/{requirement_id}",
+        "/api/v1/admin/visit-requirements/{requirement_id}/publish",
+        "/api/v1/admin/visit-requirements/{requirement_id}/archive",
+        "/api/v1/admin/knowledge-documents",
+        "/api/v1/admin/knowledge-documents/{record_id}",
+        "/api/v1/admin/knowledge-documents/{record_id}/submit-review",
+        "/api/v1/admin/knowledge-documents/{record_id}/review",
+        "/api/v1/admin/knowledge-documents/{record_id}/publish",
+        "/api/v1/admin/knowledge-documents/{record_id}/archive",
+        "/api/v1/admin/knowledge-documents/{record_id}/revoke",
+        "/api/v1/admin/articles",
+        "/api/v1/admin/articles/{article_id}",
+        "/api/v1/admin/articles/{article_id}/publish",
+        "/api/v1/admin/articles/{article_id}/archive",
+        "/api/v1/admin/audit-events",
+    }
+    assert required <= set(paths)
+    assert schema["info"]["version"] == "0.2.0"
     assert "ErrorResponse" in schema["components"]["schemas"]
 
 

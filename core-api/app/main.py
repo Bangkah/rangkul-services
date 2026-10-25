@@ -17,7 +17,7 @@ from app.providers import FakeLLMProvider
 
 logger = logging.getLogger("app.startup")
 
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.2.0"
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -37,9 +37,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(
         title="RANGKUL Core API",
         description=(
-            "Fondasi backend RANGKUL AI sesuai SRS. Fase 0 mencakup kontrak "
-            "API berversi, model error konsisten, request ID, logging aman, "
-            "database dan migrasi, otorisasi admin minimum, serta health check."
+            "Backend RANGKUL AI sesuai SRS. Fase 1 mencakup katalog fasilitas, "
+            "layanan, persiapan kunjungan, artikel, dokumen pengetahuan dengan "
+            "alur review/publish, audit administratif, dan data seed sintetis."
         ),
         version=APP_VERSION,
         lifespan=lifespan,

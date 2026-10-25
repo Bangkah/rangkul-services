@@ -1,6 +1,6 @@
 # RANGKUL Services
 
-Backend RANGKUL AI. Implementasi mengikuti SRS secara bertahap (waterfall); status saat ini **Fase 0 — Fondasi Backend dan CI/CD**.
+Backend RANGKUL AI. Implementasi mengikuti SRS secara bertahap (waterfall); status saat ini **Fase 1 — Data Inti dan API Publik**.
 
 ## Struktur
 
@@ -22,7 +22,10 @@ uvicorn app.main:app --reload --env-file .env
 - Swagger: `http://localhost:8000/docs`
 - Liveness: `GET /api/v1/health/live`
 - Readiness: `GET /api/v1/health/ready`
+- Fasilitas publik: `GET /api/v1/hospitals`
+- Artikel publik: `GET /api/v1/articles`
 - Identitas admin: `GET /api/v1/admin/me` dengan header `Authorization: Bearer dev-system-admin-token` (token pengembangan dari `.env.example`; jangan dipakai di produksi).
+- Seed sintetis: `python -m app.seed` (idempoten; ditolak saat `APP_ENV=production`).
 
 Docker: `docker compose up --build core-api`.
 
