@@ -34,7 +34,7 @@ jobs:
           ruff format --check main.py
           python -m py_compile main.py
           python -m json.tool postman_collection.json > /dev/null
-          python -c "import main; assert set(main.app.openapi()['paths']) == {'/healthz', '/api/chat', '/api/facilities', '/api/register-dummy', '/api/community-guide'}"
+          python -c "import main; assert set(main.app.openapi()['paths']) == {'/healthz', '/api/chat', '/api/facilities', '/api/facility-documents', '/api/facility-documents/{document_id}', '/api/register-dummy', '/api/community-guide'}"
       - name: Build model runtime image
         run: docker build -t rangkul-model-runtime ./model-runtime
       - name: Build Core API image

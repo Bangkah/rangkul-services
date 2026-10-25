@@ -5,7 +5,9 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    {"key": "baseUrl", "value": "{{STAGING_URL}}"}
+    {"key": "baseUrl", "value": "{{STAGING_URL}}"},
+    {"key": "facilityAdminToken", "value": "{{FACILITY_ADMIN_TOKEN}}"},
+    {"key": "facilityDocumentId", "value": "{{FACILITY_DOCUMENT_ID}}"}
   ],
   "item": [
     {
@@ -20,6 +22,18 @@
     {
       "name": "List demo facilities",
       "request": {"method": "GET", "url": {"raw": "{{baseUrl}}/api/facilities", "host": ["{{baseUrl}}"], "path": ["api", "facilities"]}}
+    },
+    {
+      "name": "List partner facility documents (admin)",
+      "request": {"method": "GET", "header": [{"key": "X-Facility-Admin-Token", "value": "{{facilityAdminToken}}"}], "url": {"raw": "{{baseUrl}}/api/facility-documents", "host": ["{{baseUrl}}"], "path": ["api", "facility-documents"]}}
+    },
+    {
+      "name": "Upload partner facility document (admin)",
+      "request": {"method": "POST", "header": [{"key": "X-Facility-Admin-Token", "value": "{{facilityAdminToken}}"}], "body": {"mode": "formdata", "formdata": [{"key": "file", "type": "file", "src": ""}]}, "url": {"raw": "{{baseUrl}}/api/facility-documents", "host": ["{{baseUrl}}"], "path": ["api", "facility-documents"]}}
+    },
+    {
+      "name": "Delete partner facility document (admin)",
+      "request": {"method": "DELETE", "header": [{"key": "X-Facility-Admin-Token", "value": "{{facilityAdminToken}}"}], "url": {"raw": "{{baseUrl}}/api/facility-documents/{{facilityDocumentId}}", "host": ["{{baseUrl}}"], "path": ["api", "facility-documents", "{{facilityDocumentId}}"]}}
     },
     {
       "name": "Dummy registration",

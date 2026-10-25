@@ -2,19 +2,20 @@
 
 ## Product manager — Nazril
 
+- Provide the current partner facility documents (PDF, DOCX, TXT, or Markdown) and confirm their facts are reviewed and current before upload.
 - Confirm real partner facility names, addresses, coordinates, and operating schedules before replacing demo pins.
 - Select the backend staging host and confirm the retention/review policy for submitted community directions.
 - Share the final staging URL with UI/UX and frontend once deployment is ready.
 
 ## UI/UX — Nasya
 
-- Use `is_demo` and `data_status` to label placeholder facility pins clearly.
+- Use `is_demo` and `data_status` to label placeholder facility pins clearly. Chat can cite uploaded partner documents; the map endpoint still needs verified structured coordinates.
 - Show the dummy registration response as a demo queue code, not a real appointment.
 - Present community directions as pending submissions until reviewed.
 
 ## Frontend — Jelita
 
-- Use the request and response examples below; chat returns streaming NDJSON.
+- Use the request and response examples below; chat returns streaming NDJSON and can reference uploaded partner documents.
 - Call the configured backend origin only. Never put `HF_TOKEN` in browser code.
 - Tell the backend owner the exact frontend origin so it can be added to `CORS_ORIGINS`.
 
@@ -36,7 +37,11 @@ Request JSON:
 }
 ```
 
-Response: streaming `application/x-ndjson` from the private Hugging Face Space. The Space's anti-diagnosis system prompt is static; client `system` messages and extra fields are rejected. RAG is currently disabled until a vector retriever is configured.
+Response: streaming `application/x-ndjson` from the private Hugging Face Space. The Space's anti-diagnosis system prompt is static; client `system` messages and extra fields are rejected. Chat searches indexed partner-document passages with SQLite FTS5 and sends relevant citations as untrusted context. This is keyword retrieval, not vector similarity.
+
+## `GET/POST /api/facility-documents` and `DELETE /api/facility-documents/{id}`
+
+These staff-only routes use `X-Facility-Admin-Token`. Upload multipart form field `file` with PDF, DOCX, TXT, or Markdown. The API returns the document id and indexed chunk count. `GET` lists indexed documents; `DELETE` removes the original and its index. Keep the admin token on the backend. Text-only extraction does not OCR scanned PDFs.
 
 ## `GET /api/facilities`
 
@@ -64,4 +69,4 @@ Response JSON includes generated `id`, submitted `text`, `status: "pending"`, an
 
 ## Errors and current limitations
 
-Invalid payloads return FastAPI validation errors (422). Chat returns 503 when Hugging Face credentials are not configured, 502 for upstream failures, and 504 for upstream timeouts. Facilities are demo fixtures, RAG is not configured, and no staging endpoint is deployed.
+Invalid payloads return FastAPI validation errors (422). Chat returns 503 when Hugging Face credentials are not configured, 502 for upstream failures, and 504 for upstream timeouts. Facilities are demo fixtures and no staging endpoint is deployed. Keep `/data/rangkul` on durable storage for both the index/database and uploaded documents.
