@@ -1,7 +1,9 @@
 FROM ollama/ollama:0.40.11-rocm AS model-build
 ENV OLLAMA_HOST=127.0.0.1:11434
 WORKDIR /build
-RUN useradd --uid 1000 --create-home --shell /usr/sbin/nologin user && chown -R 1000:1000 /build /home/user
+RUN if ! getent passwd 1000 >/dev/null 2>&1; then useradd --uid 1000 --create-home --shell /usr/sbin/nologin user; fi \
+    && mkdir -p /home/user/.ollama/models \
+    && chown -R 1000:1000 /build /home/user
 COPY Modelfile /build/Modelfile
 COPY build_model.sh /build/build_model.sh
 RUN chmod 755 /build/build_model.sh && chown 1000:1000 /build/Modelfile /build/build_model.sh
