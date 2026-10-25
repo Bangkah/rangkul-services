@@ -76,7 +76,7 @@ def test_body_limit():
     assert r.status_code == 413
 
 
-def test_container_and_space_config_invariants():
+def test_container_config_invariants():
     root = Path(__file__).resolve().parents[1]
     dockerfile = (root / "Dockerfile").read_text(encoding="utf-8")
     readme = (root / "README.md").read_text(encoding="utf-8")
@@ -88,7 +88,8 @@ def test_container_and_space_config_invariants():
     assert "OLLAMA_MAX_QUEUE=4" in dockerfile
     assert (root / "build_model.sh").is_file()
     assert (root / "proxy.py").is_file()
-    assert "sdk: docker" in readme and "app_port: 7860" in readme
+    assert "LLM_PROVIDER=ollama" in readme
+    assert "docker compose --profile ollama up --build" in readme
 
 
 def test_body_limit_middleware_preserves_disconnect_events():
