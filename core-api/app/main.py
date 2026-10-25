@@ -13,11 +13,12 @@ from app.db import Database
 from app.errors import install_exception_handlers
 from app.logging_config import configure_logging
 from app.middleware import REQUEST_ID_HEADER, RequestContextMiddleware
-from app.providers import FakeLLMProvider
+from app.providers import build_llm_provider
+from app.ratelimit import FixedWindowRateLimiter, RateLimitMiddleware
 
 logger = logging.getLogger("app.startup")
 
-APP_VERSION = "0.2.0"
+APP_VERSION = "0.3.0"
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -37,22 +38,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(
         title="RANGKUL Core API",
         description=(
-            "Backend RANGKUL AI sesuai SRS. Fase 1 mencakup katalog fasilitas, "
-            "layanan, persiapan kunjungan, artikel, dokumen pengetahuan dengan "
-            "alur review/publish, audit administratif, dan data seed sintetis."
+            "Backend RANGKUL AI sesuai SRS. Fase 2 menambahkan chat berbasis "
+            "RAG atas dokumen pengetahuan terbit, redaksi PII, guardrail "
+            "keselamatan, sitasi sumber, rate limit, dan fallback provider."
         ),
         version=APP_VERSION,
         lifespan=lifespan,
     )
 
+    rate_limiter = FixedWindowRateLimiter(
+        window_seconds=resolved.rate_limit_window_seconds
+    )
     app.state.settings = resolved
     app.state.db = database
-    app.state.llm = FakeLLMProvider()
+    app.state.llm = build_llm_provider(resolved)
+    app.state.rate_limiter = rate_limiter
 
-    app.add_middleware(
-        RequestContextMiddleware,
-        header_name=REQUEST_ID_HEADER,
-    )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(resolved.cors_origins),
@@ -60,6 +61,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
         allow_headers=["Content-Type", "Authorization", REQUEST_ID_HEADER],
         expose_headers=[REQUEST_ID_HEADER],
+    )
+    app.add_middleware(
+        RateLimitMiddleware,
+        settings=resolved,
+        limiter=rate_limiter,
+    )
+    app.add_middleware(
+        RequestContextMiddleware,
+        header_name=REQUEST_ID_HEADER,
     )
 
     install_exception_handlers(app)

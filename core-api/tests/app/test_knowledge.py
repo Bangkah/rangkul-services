@@ -337,3 +337,41 @@ def test_knowledge_synthetic_publish_denied_in_production(tmp_path):
 def test_audit_events_require_system_admin(client, reviewer_auth):
     denied = client.get("/api/v1/admin/audit-events", headers=reviewer_auth)
     assert denied.status_code == 403
+
+
+def test_published_knowledge_is_indexed_and_hospital_scoped(client, system_auth, app):
+    draft = create_document(
+        client,
+        system_auth,
+        hospital_id="rs-a",
+        content="Persiapan tes HIV meliputi konsultasi awal dan identitas diri.",
+    ).json()
+    assert draft["hospital_id"] == "rs-a"
+
+    with app.state.db.connect() as connection:
+        draft_chunks = connection.execute(
+            "SELECT COUNT(*) FROM knowledge_chunks WHERE document_record_id = ?",
+            [draft["id"]],
+        ).fetchone()[0]
+    assert draft_chunks == 0
+
+    submitted = client.post(
+        f"/api/v1/admin/knowledge-documents/{draft['id']}/submit-review",
+        headers=system_auth,
+    )
+    assert submitted.status_code == 200
+    assert review(client, system_auth, draft["id"], "approve").status_code == 200
+    published = client.post(
+        f"/api/v1/admin/knowledge-documents/{draft['id']}/publish",
+        headers=system_auth,
+    )
+    assert published.status_code == 200
+
+    with app.state.db.connect() as connection:
+        chunks = connection.execute(
+            """SELECT text FROM knowledge_chunks
+               WHERE document_record_id = ?""",
+            [draft["id"]],
+        ).fetchall()
+    assert chunks
+    assert "Persiapan tes HIV" in chunks[0]["text"]

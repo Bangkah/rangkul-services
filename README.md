@@ -24,6 +24,7 @@ uvicorn app.main:app --reload --env-file .env
 - Readiness: `GET /api/v1/health/ready`
 - Fasilitas publik: `GET /api/v1/hospitals`
 - Artikel publik: `GET /api/v1/articles`
+- Chat RAG: `POST /api/v1/chat` dan `POST /api/v1/chat/stream` (SSE)
 - Identitas admin: `GET /api/v1/admin/me` dengan header `Authorization: Bearer dev-system-admin-token` (token pengembangan dari `.env.example`; jangan dipakai di produksi).
 - Seed sintetis: `python -m app.seed` (idempoten; ditolak saat `APP_ENV=production`).
 
@@ -39,7 +40,7 @@ mypy app
 pytest --cov=app --cov-fail-under=85
 ```
 
-CI GitHub Actions menjalankan lint, format, type check, unit/integration test dengan gerbang coverage 85%, pemeriksaan kontrak OpenAPI, pemindaian secret, audit dependensi, dan build image.
+CI GitHub Actions menjalankan lint, format, type check, unit/integration test dengan gerbang coverage 85%, pemeriksaan kontrak OpenAPI, pemindaian secret, audit dependensi, dan build image. Chat Fase 2 memakai provider fake dan MockTransport di CI; tidak ada panggilan Groq langsung.
 
 ## Integrasi tim
 

@@ -20,6 +20,10 @@ def build_settings(tmp_path: Path, app_env: str = "test") -> Settings:
         database_path=tmp_path / "rangkul-test.sqlite3",
         log_level="WARNING",
         cors_origins=("http://localhost:3000",),
+        rate_limit_public_per_minute=1000,
+        rate_limit_admin_per_minute=1000,
+        rate_limit_chat_per_minute=1000,
+        llm_provider="fake",
         admin_credentials=(
             AdminCredential(
                 token=SYSTEM_TOKEN, name="Admin Sistem", role=Role.SYSTEM_ADMIN

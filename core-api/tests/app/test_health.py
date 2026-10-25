@@ -43,7 +43,11 @@ def test_startup_applies_migrations(settings):
 
     assert {"audit_events", "hospitals", "articles"} <= tables
     assert "schema_migrations" in tables
-    assert applied == ["0001_audit_events", "0002_catalog_and_content"]
+    assert applied == [
+        "0001_audit_events",
+        "0002_catalog_and_content",
+        "0003_chat_rag",
+    ]
 
 
 def test_ready_fails_softly_on_unmigrated_database(client, tmp_path: Path):
